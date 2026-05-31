@@ -1,5 +1,5 @@
 #from pathlib import Path
-import parser
+from parser import ConfigParser
 import config_file
 
 def ask_home():
@@ -22,4 +22,5 @@ conf = ask_home()
 
 print('Now using {} as conf dir'.format(conf.conf_dir))
     
-parser.main(conf.conf_dir)
+parser = ConfigParser(config_dir=conf.conf_dir)
+config = parser.parse()

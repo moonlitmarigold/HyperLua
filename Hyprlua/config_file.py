@@ -2,25 +2,27 @@ import pathlib
 import dataclasses
 
 @dataclasses.dataclass
-class conf:
-    
-    home: pathlib.Path | str = pathlib.Path.home()
+class Conf:
+
+    _config: pathlib.Path | str = None
+
+    @property
+    def config(self) -> pathlib.Path:
+        if self._config is None:
+            return pathlib.Path(pathlib.Path.home()) / ".config"
+        else:
+            if isinstance(self._config, str):
+                return pathlib.Path(self._config)
+            else:
+                return self._config
     
     @property
     def conf_file(self) -> pathlib.Path:
-        path = pathlib.Path(self.home)
-        path = path / ".config" / "hypr" / "hyprland.conf"
-        return path
+        return self.config / "hypr" / "hyprland.conf"
     
     @property
     def conf_dir(self) -> pathlib.Path :
-        path = pathlib.Path(self.home)
-        path = path / ".config" / "hypr"
-        return path
-        
-    
-if "__name__" == "__main__":
-    c = conf()
-    print(c.conf_dir)
+        return self.config / "hypr"
+
     
 

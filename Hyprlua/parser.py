@@ -62,7 +62,7 @@ class Parser:
                 return new_cls
 
         logger.error('No parser found for line: {}'.format(line))
-        return Comment(content=add_comment(line))
+        return Comment().parse(line, self)
 
     def _parse_lines(self, line:list):
         _line = line[0]
@@ -75,14 +75,13 @@ class Parser:
                 return new_cls
 
         logger.error('No parser found for lines:\n{}'.format(line))
-        comments = self.comment_out_lines(line)
-        return comments
+        return Comment().parse(line, self)
 
     def comment_out_lines(self, line:list):
         # TODO: no comment if already #, but comment out if not
         return_list = list()
         for l in line:
-            if isinstance(l, str):
+            if isinstance(l, str) or isinstance(l, EmptyLine):
                 return_list.append(Comment(content=add_comment(l)))
             elif isinstance(l, Comment):
                 return_list.append(l)
@@ -94,15 +93,23 @@ class Parser:
     def _multiline_parse(self, line:str, generator):
         line_list = [line]
 
-        while not line.__contains__('}'):
+        while line is not None:
             line = next(generator)
+            if line.__contains__('}'):
+                line_list.append(line)
+                break
+
+            if line == '':
+                line_list.append(EmptyLine())
+                continue
             if line.__contains__('{'):
-                line = self._multiline_parse(line, generator)
+                line_list.append(self._multiline_parse(line, generator))
+                continue
             line_list.append(line)
-            if line is None:
-                logger.error('Unexpected end of file while parsing multiline block')
-                raise StopIteration('Unexpected end of file while parsing multiline block')
-        line_list.append(line)
+
+        if line is None:
+            logger.error('Unexpected end of file while parsing multiline block')
+            raise StopIteration('Unexpected end of file while parsing multiline block')
         return self._parse_lines(line_list)
 
 

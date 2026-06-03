@@ -7,8 +7,13 @@ logger = logging.getLogger('HyprLua')
 @dataclasses.dataclass
 class EmptyLine:
 
+    commented: bool = False
+
     def __str__(self):
-        return ''
+        if not self.commented:
+            return ''
+        else:
+            return '#'
 
 
 @dataclasses.dataclass
@@ -60,6 +65,12 @@ class Base:
         else:
             logger.error('Invalid content type: {}'.format(type(content)))
 
+    def filter_out_keyword(self, line:str):
+        if line.startswith(self.keyword):
+            return line[len(self.keyword):].strip()
+        else:
+            return line
+
 
 REGISTRY: list = list()
 
@@ -74,6 +85,25 @@ class Comment(Base):
 
     def parse(self, line, parser_class):
         self._parse(line)
+        return self
+
+    def add_comment(self, line:str):
+        if line.startswith('#'):
+            return line
+        else:
+            return '#' + ' ' + line
+
+    def __str__(self):
+        line = super().__str__()
+
+        if self.is_single_line:
+            line = self.add_comment(line)
+        if self.is_multiline:
+            lines = line.split('\n')
+            lines = [self.add_comment(l) for l in lines[:-1]]
+            line = '\n'.join(lines)
+        return line
+
 
 @register
 @dataclasses.dataclass

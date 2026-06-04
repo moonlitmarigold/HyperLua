@@ -58,8 +58,18 @@ class File(Base):
 class Monitor(Base):
     keyword: ClassVar[str] = 'monitor'
 
+    name= ''
+    resolution= ''
+    position= ''
+    scale= ''
+
     def parse(self, line:str, parser_class):
-        self.content = line
+        self._parse(line)
+        self.name, self.resolution, self.position, self.scale = parser_class.var_inline_parse(line)
+        return self
+
+    def __str__(self):
+        return f'monitor = {self.name}, {self.resolution}, {self.position}, {self.scale}'
 
 @register
 @dataclasses.dataclass
@@ -71,8 +81,11 @@ class Env(Base):
 
     def parse(self, line:str, parser_class):
         self._parse(line)
-        self.var_name, self.var_value = parser_class.inline_parse(line)
+        self.var_name, self.var_value = parser_class.var_inline_parse(line)
         return self
+
+    def __str__(self):
+        return f'env = {self.var_name},{self.var_value}'
 
 @register
 @dataclasses.dataclass
@@ -84,7 +97,10 @@ class Var(Base):
 
     def parse(self, line:str, parser_class):
         self._parse(line)
-        line = line.strip('=').strip()
-        self.var_name, self.var_value = line.split(',')
+        _vars = line.split('=')
+        self.var_name, self.var_value = _vars[0].strip()[1:], _vars[1].strip()
         return self
+
+    def __str__(self):
+        return f'${self.var_name} = {self.var_value}'
 

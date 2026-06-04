@@ -1,6 +1,5 @@
 from pathlib import Path
 from .dataclass_module import *
-from .utils import add_comment
 import logging
 logger = logging.getLogger('HyprLua')
 
@@ -99,11 +98,14 @@ class Parser:
             raise StopIteration('Unexpected end of file while parsing multiline block')
         return self._parse_lines(line_list)
 
-    def inline_parse(self, line):
-        line = line.strip('=').strip()
+    def var_inline_parse(self, line):
+        line = line.split('=')[1].strip()
         _vars = line.split(',')
         _vars = [v.strip() for v in _vars]
         return _vars
+
+    def var_multiline_parse(self, line):
+        pass
 
 
 

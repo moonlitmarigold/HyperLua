@@ -71,8 +71,7 @@ class Env(Base):
 
     def parse(self, line:str, parser_class):
         self._parse(line)
-        line = line.strip('=').strip()
-        self.var_name, self.var_value = line.split(',')
+        self.var_name, self.var_value = parser_class.inline_parse(line)
         return self
 
 @register

@@ -77,19 +77,6 @@ class Parser:
         logger.error('No parser found for lines:\n{}'.format(line))
         return Comment().parse(line, self)
 
-    def comment_out_lines(self, line:list):
-        # TODO: no comment if already #, but comment out if not
-        return_list = list()
-        for l in line:
-            if isinstance(l, str) or isinstance(l, EmptyLine):
-                return_list.append(Comment(content=add_comment(l)))
-            elif isinstance(l, Comment):
-                return_list.append(l)
-            else:
-                _list = self.comment_out_lines(l)
-                return_list.extend(_list)
-        return return_list
-
     def _multiline_parse(self, line:str, generator):
         line_list = [line]
 

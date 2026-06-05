@@ -1,5 +1,6 @@
 from pathlib import Path
 from .dataclass_module import *
+from . import inline_module
 import logging
 logger = logging.getLogger('HyprLua')
 
@@ -13,6 +14,7 @@ class Parser:
     def __init__(self, conf_file:Path) -> None:
         self.conf_file = conf_file
         self.parser_dir = self.build_parser_dir()
+        self.inline_dir = self.build_inline_dir()
 
     @staticmethod
     def build_parser_dir():
@@ -20,6 +22,12 @@ class Parser:
         for cls in REGISTRY:
             _dicit[cls.keyword] = cls
         return _dicit
+
+    @staticmethod
+    def build_inline_dir():
+        _list = list()
+        return inline_module.REGISTRY
+
 
     def start_parser(self):
         logger.info('Starting parser for {}'.format(self.conf_file))
@@ -98,22 +106,40 @@ class Parser:
             raise StopIteration('Unexpected end of file while parsing multiline block')
         return self._parse_lines(line_list)
 
-    def var_inline_parse(self, line):
+    @staticmethod
+    def var_inline_parse(line:str):
         line = line.split('=')[1].strip()
         _vars = line.split(',')
         _vars = [v.strip() for v in _vars]
         return _vars
 
-    def var_multiline_parse(self, line):
-        pass
+    def _var_multiline_parse(self, line):
+        for cls in self.inline_dir:
+            if cls.check(line):
+                new_cls = cls()
+                new_cls.parse(line, self)
+                return new_cls
+        logger.error('No parser found for inline: {}'.format(line))
+        return Comment().parse(line, self)
 
 
+    def var_multiline_parse(self, lines:list[str | list]):
+        _return_list = list()
+        for line in lines[1:-1]:
+            if isinstance(line, list):
+                _return_list.append(self.var_multiline_parse(line))
+                continue
 
+            if isinstance(line, str):
 
+                if line == '':
+                    _return_list.append(EmptyLine())
+                    continue
 
+                if line.strip().startswith('#'):
+                    _return_list.append(Comment().parse(line, self))
+                    continue
 
+                _return_list.append(self._var_multiline_parse(line))
+        return inline_module.Category().parse(_return_list, lines[0], self)
 
-
-
-    
-        

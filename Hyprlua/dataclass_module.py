@@ -17,7 +17,8 @@ class Comment(Base):
         self._parse(line)
         return self
 
-    def add_comment(self, line:str):
+    @staticmethod
+    def add_comment(line:str):
         if line.startswith('#'):
             return line
         else:
@@ -103,4 +104,10 @@ class Var(Base):
 
     def __str__(self):
         return f'${self.var_name} = {self.var_value}'
+
+@register
+@dataclasses.dataclass
+class WindowRule(MultiLineBase):
+
+    keyword: ClassVar[str] = 'windowrule'
 

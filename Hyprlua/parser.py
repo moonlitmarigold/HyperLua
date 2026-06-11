@@ -6,7 +6,12 @@ logger = logging.getLogger('HyprLua')
 
 def lines_generator(lines:list):
     for line in lines:
-        yield line.strip()
+        if line.strip() == '':
+            yield EmptyLine()
+        elif line.strip().startswith('#'):
+            yield Comment().parse(line, None)
+        else:
+            yield line
     yield None
 
 class Parser:
@@ -44,18 +49,17 @@ class Parser:
         line = next(generator)
 
         while line is not None:
-            if line=='':
-                file.add_line(EmptyLine())
-                line = next(generator)
-                continue
-            if line.__contains__('{'):
-                parsed_line = self._multiline_parse(line, generator)
-                file.add_line(parsed_line)
-                line = next(generator)
-                continue
-
             logger.debug('Processing line: {}'.format(line))
-            file.add_line(self._parse(line))
+            if isinstance(line, str):
+                if line.__contains__('{'):
+                    parsed_line = self._multiline_parse(line, generator)
+                    file.add_line(parsed_line)
+                    line = next(generator)
+                    continue
+
+                file.add_line(self._parse(line))
+            else:
+                file.add_line(line)
             line = next(generator)
         return file
 
@@ -89,16 +93,15 @@ class Parser:
 
         while line is not None:
             line = next(generator)
-            if line.__contains__('}'):
-                line_list.append(line)
-                break
 
-            if line == '':
-                line_list.append(EmptyLine())
-                continue
-            if line.__contains__('{'):
-                line_list.append(self._multiline_parse(line, generator))
-                continue
+            if isinstance(line, str):
+                if line.__contains__('}'):
+                    line_list.append(line)
+                    break
+
+                if line.__contains__('{'):
+                    line_list.append(self._multiline_parse(line, generator))
+                    continue
             line_list.append(line)
 
         if line is None:
@@ -117,11 +120,9 @@ class Parser:
         for cls in self.inline_dir:
             if cls.check(line):
                 new_cls = cls()
-                new_cls.parse(line, self)
-                return new_cls
+                return new_cls.parse(line, self)
         logger.error('No parser found for inline: {}'.format(line))
         return Comment().parse(line, self)
-
 
     def var_multiline_parse(self, lines:list[str | list]):
         _return_list = list()
@@ -131,15 +132,9 @@ class Parser:
                 continue
 
             if isinstance(line, str):
-
-                if line == '':
-                    _return_list.append(EmptyLine())
-                    continue
-
-                if line.strip().startswith('#'):
-                    _return_list.append(Comment().parse(line, self))
-                    continue
-
                 _return_list.append(self._var_multiline_parse(line))
+                continue
+
+            _return_list.append(line)
         return inline_module.Category().parse(_return_list, lines[0], self)
 

@@ -69,3 +69,17 @@ class Base:
             return line[len(self.keyword):].strip()
         else:
             return line
+
+@dataclasses.dataclass
+class MultiLineBase:
+
+    keyword: ClassVar[str] = ''   # not a field — just a class-level constant
+    category_obj = None
+
+    def parse(self, lines:list, parser_class):
+        self.category_obj = parser_class.var_multiline_parse(lines)
+        return self
+
+    def __str__(self):
+        return str(self.category_obj)
+

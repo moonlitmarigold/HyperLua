@@ -1,6 +1,6 @@
 from pathlib import Path
 from .base_module import *
-
+from . import config_file
 
 REGISTRY: list = list()
 
@@ -40,13 +40,20 @@ class Comment(Base):
 @dataclasses.dataclass
 class File(Base):
     name: str = ''
-    location:Path = Path()
+    conf_obj:config_file.Conf = None
     keyword: ClassVar[str] = 'source'
     lines:list = dataclasses.field(default_factory=list)
 
+    @property
+    def location(self):
+        return self.conf_obj.conf_file
+
     def parse(self, line:str, parser_class):
-        # source logic
-        ...
+        location = Path(line.split('=')[1].strip())
+        self.conf_obj = parser_class.return_new_conf_obj(location)
+
+        return self
+
 
     def add_line(self, line_obj:type(Base)):
         self.lines.append(line_obj)

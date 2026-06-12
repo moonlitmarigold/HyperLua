@@ -1,6 +1,7 @@
 from pathlib import Path
 from .dataclass_module import *
 from . import inline_module
+from . import config_file
 import logging
 logger = logging.getLogger('HyprLua')
 
@@ -16,8 +17,9 @@ def lines_generator(lines:list):
 
 class Parser:
     
-    def __init__(self, conf_file:Path) -> None:
-        self.conf_file = conf_file
+    def __init__(self, conf_obj:config_file.Conf|config_file.ConfExtraFile) -> None:
+        self.conf_obj = conf_obj
+        self.conf_file = conf_obj.conf_file
         self.parser_dir = self.build_parser_dir()
         self.inline_dir = self.build_inline_dir()
 
@@ -33,6 +35,9 @@ class Parser:
         _list = list()
         return inline_module.REGISTRY
 
+    def return_new_conf_obj(self, path:Path) -> config_file.ConfExtraFile:
+        new_conf_file = self.conf_obj.conf_file / path
+        return config_file.ConfExtraFile(new_conf_file)
 
     def start_parser(self):
         logger.info('Starting parser for {}'.format(self.conf_file))

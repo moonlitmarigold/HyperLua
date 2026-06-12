@@ -2,6 +2,19 @@ import pathlib
 import dataclasses
 
 @dataclasses.dataclass
+class ConfExtraFile:
+
+    config_file: pathlib.Path
+
+    @property
+    def conf_file(self) -> pathlib.Path:
+        return self.config_file
+
+    @property
+    def conf_dir(self) -> pathlib.Path:
+        return self.config_file.parent
+
+@dataclasses.dataclass
 class Conf:
 
     _config: pathlib.Path | str = None
@@ -23,6 +36,3 @@ class Conf:
     @property
     def conf_dir(self) -> pathlib.Path :
         return self.config / "hypr"
-
-    
-

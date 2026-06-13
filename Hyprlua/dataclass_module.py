@@ -1,6 +1,7 @@
 from pathlib import Path
 from .base_module import *
 from . import config_file
+import copy
 
 REGISTRY: list = list()
 
@@ -40,7 +41,7 @@ class Comment(Base):
 @dataclasses.dataclass
 class File(Base):
     name: str = ''
-    conf_obj:config_file.Conf = None
+    conf_obj:config_file.Conf | config_file.ConfExtraFile = None
     keyword: ClassVar[str] = 'source'
     lines:list = dataclasses.field(default_factory=list)
 
@@ -48,12 +49,15 @@ class File(Base):
     def location(self):
         return self.conf_obj.conf_file
 
-    def parse(self, line:str, parser_class):
-        location = Path(line.split('=')[1].strip())
-        self.conf_obj = parser_class.return_new_conf_obj(location)
+    @property
+    def dir(self):
+        return self.conf_obj.conf_dir
 
+    def parse(self, line:str, parser_class, parent_file):
+        location = Path(line.split('=')[1].strip()).expanduser()
+        self.conf_obj = config_file.ConfExtraFile(parent_file.conf_obj.conf_dir / location)
+        parser_class.parse(self)
         return self
-
 
     def add_line(self, line_obj:type(Base)):
         self.lines.append(line_obj)
@@ -117,4 +121,15 @@ class Var(Base):
 class WindowRule(MultiLineBase):
 
     keyword: ClassVar[str] = 'windowrule'
+
+    def parse(self, lines, parser_class):
+        if isinstance(lines, str):
+            return Comment().parse(lines, None)
+        return super().parse(lines, parser_class)
+
+@register
+@dataclasses.dataclass
+class General(MultiLineBase):
+
+    keyword: ClassVar[str] = 'general'
 

@@ -7,9 +7,10 @@ logger = logging.getLogger('HyprLua')
 
 def lines_generator(lines:list):
     for line in lines:
-        if line.strip() == '':
+        line = line.strip()
+        if line == '':
             yield EmptyLine()
-        elif line.strip().startswith('#'):
+        elif line.startswith('#'):
             yield Comment().parse(line, None)
         else:
             yield line
@@ -35,17 +36,13 @@ class Parser:
         _list = list()
         return inline_module.REGISTRY
 
-    def return_new_conf_obj(self, path:Path) -> config_file.ConfExtraFile:
-        new_conf_file = self.conf_obj.conf_file / path
-        return config_file.ConfExtraFile(new_conf_file)
-
     def start_parser(self):
         logger.info('Starting parser for {}'.format(self.conf_file))
         if not self.conf_file.exists():
             logger.error('Config file does not exist: {}'.format(self.conf_file))
             return None
 
-        hyprland_file = File(name=self.conf_file.name, location=self.conf_file)
+        hyprland_file = File(name=self.conf_file.name, conf_obj=self.conf_obj)
         return self.parse(hyprland_file)
         
     def parse(self, file:File):
@@ -62,6 +59,12 @@ class Parser:
                     line = next(generator)
                     continue
 
+                if line.startswith('source'):
+                    new_file = File().parse(line, self, file)
+                    file.add_line(new_file)
+                    line = next(generator)
+                    continue
+
                 file.add_line(self._parse(line))
             else:
                 file.add_line(line)
@@ -74,8 +77,7 @@ class Parser:
             if line.startswith(keyword):
                 #logger.debug('Parsing line: {}'.format(line))
                 new_cls = cls()
-                new_cls.parse(line, self)
-                return new_cls
+                return new_cls.parse(line, self)
 
         logger.error('No parser found for line: {}'.format(line))
         return Comment().parse(line, self)
@@ -87,8 +89,8 @@ class Parser:
             if _line.startswith(keyword):
                 #logger.debug('Parsing line: {}'.format(line))
                 new_cls = cls()
-                new_cls.parse(line, self)
-                return new_cls
+
+                return new_cls.parse(line, self)
 
         logger.error('No parser found for lines:\n{}'.format(line))
         return Comment().parse(line, self)

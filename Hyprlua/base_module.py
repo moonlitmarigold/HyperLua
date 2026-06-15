@@ -38,6 +38,8 @@ class Base:
         else:
             return None
 
+    def
+
     def __str__(self):
         if self.is_single_line:
             return self.content

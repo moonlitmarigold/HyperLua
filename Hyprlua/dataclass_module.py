@@ -63,7 +63,7 @@ class File(Base):
         self.lines.append(line_obj)
 
     def __str__(self):
-        return self._str_lines(self.lines)
+        return self._str_lines(self.lines, self.commands)
 
 @register
 @dataclasses.dataclass

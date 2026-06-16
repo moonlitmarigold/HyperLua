@@ -7,13 +7,7 @@ logger = logging.getLogger('HyprLua')
 
 def lines_generator(lines:list):
     for line in lines:
-        line = line.strip()
-        if line == '':
-            yield EmptyLine()
-        elif line.startswith('#'):
-            yield Comment().parse(line, None)
-        else:
-            yield line
+        yield line
     yield None
 
 class Parser:
@@ -36,6 +30,49 @@ class Parser:
         _list = list()
         return inline_module.REGISTRY
 
+    @staticmethod
+    def pre_parse(lines:list):
+        def _parse(_line):
+            _line = _line.strip()
+            if _line == '':
+                return EmptyLine()
+            elif _line.startswith('#'):
+                return Comment().parse(line, None)
+            else:
+                return line
+
+        def _multiline(_line:str, _generator):
+            if not _line.__contains__('{'):
+                return Line(_line)
+            line_list = [line]
+
+            while _line is not None:
+                _line = next(generator)
+
+                if _line.__contains__('}'):
+                    line_list.append(line)
+                    break
+
+                if _line.__contains__('{'):
+                    line_list.append(_multiline(_line, _generator))
+                    continue
+                line_list.append(line)
+            return MultiLine(line_list)
+
+        _lines = list()
+        generator = lines_generator(lines)
+        line = next(generator)
+
+        while line is not None:
+            line = _parse(line)
+            if isinstance(line, str):
+                _lines.append(_multiline(line, generator))
+            else:
+                _lines.append(line)
+            line = next(generator)
+        return _lines
+
+
     def start_parser(self):
         logger.info('Starting parser for {}'.format(self.conf_file))
         if not self.conf_file.exists():
@@ -47,6 +84,9 @@ class Parser:
         
     def parse(self, file:File):
         lines = file.location.read_text().split('\n')
+        lines = self.pre_parse(lines)
+        print(lines)
+        raise ValueError
         generator = lines_generator(lines)
         line = next(generator)
 

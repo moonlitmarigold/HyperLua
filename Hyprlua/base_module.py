@@ -19,12 +19,59 @@ class Line:
 
     text: str
     comment:str = ''
+    pars_obj = None
+    is_comment:bool = False
+
+    def __post_init__(self):
+        if self.text.__contains__('#') and not self.is_comment:
+            self.text, self.comment = [x.strip() for x in self.text.split('#', 1)]
+
+    def set_pars_obj(self, pars_obj):
+        self.pars_obj = pars_obj().parse(self.text)
+        return self
+
+    def set_commented(self):
+        self.is_comment = True
+        return self
+
+    def startswith(self, key):
+        return self.text.startswith(key)
+
+    @staticmethod
+    def return_comment(_str):
+        if _str.startswith('#'):
+            return _str
+        return '#' + ' ' + _str
+
+    def __str__(self):
+        if self.pars_obj is None:
+            return self.text
+        _str:str = self.pars_obj.__str__().strip()
+
+        if self.is_comment:
+            return self.return_comment(_str)
+        if self.comment.strip() == '':
+            return _str
+        return _str + ' # ' + self.comment
 
 @dataclasses.dataclass
 class MultiLine:
 
-    texts:list
+    lines:list
     comments:list = ()
+    is_comment:bool = False
+    category_obj = None
+
+    def __str__(self):
+        return ''
+
+    def set_commented(self):
+        self.is_comment = True
+        return self
+
+    def set_category_obj(self, category_obj):
+        self.category_obj = category_obj()
+        return self
 
 
 @dataclasses.dataclass
@@ -50,6 +97,13 @@ class Base:
             return self.multiline_content
         else:
             return None
+
+    @staticmethod
+    def var_inline_parse(line:str):
+        line = line.split('=')[1].strip()
+        _vars = line.split(',')
+        _vars = [v.strip() for v in _vars]
+        return _vars
 
     @staticmethod
     def filter_command(line:str):

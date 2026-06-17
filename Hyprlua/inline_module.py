@@ -20,7 +20,7 @@ class Match(Base):
             return True
         return False
 
-    def parse(self, line:str, parser_class):
+    def parse(self, line:str):
         match, self.match_value = [x.strip() for x in line.split('=')]
         self.match_type  = match.split(':')[1].strip()
         return self
@@ -41,7 +41,7 @@ class Var(Base):
             return True
         return False
 
-    def parse(self, line:str, parser_class):
+    def parse(self, line:str):
         self.var_name, self.var_value = [x.strip() for x in line.split('=')]
         return self
 
@@ -62,7 +62,7 @@ class Color(Base):
             return True
         return False
 
-    def parse(self, line:str, parser_class):
+    def parse(self, line:str):
         front, self.color = line.split('=')
         self.color = self.color.strip()
         front = front.strip()
@@ -74,7 +74,7 @@ class Color(Base):
 class Category(Base):
     category_name = ''
 
-    def parse(self, lines:list, category_name:str, parser_class):
+    def parse(self, lines:list, category_name:str):
         self.category_name = category_name.replace('{', '').strip()
         self._parse(lines)
         return self

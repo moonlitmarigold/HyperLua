@@ -3,6 +3,9 @@ from .dataclass_module import *
 from . import inline_module
 from . import config_file
 import logging
+
+from .inline_module import Category
+
 logger = logging.getLogger('HyprLua')
 
 def lines_generator(lines:list):
@@ -37,14 +40,14 @@ class Parser:
             if _line == '':
                 return EmptyLine()
             elif _line.startswith('#'):
-                return Comment().parse(line, None)
+                return Line(_line, is_comment=True)
             else:
                 return line
 
         def _multiline(_line:str, _generator):
             if not _line.__contains__('{'):
                 return Line(_line)
-            line_list = [line]
+            line_list = [_parse(_line)]
 
             while _line is not None:
                 _line = next(generator)
@@ -56,7 +59,7 @@ class Parser:
                 if _line.__contains__('{'):
                     line_list.append(_multiline(_line, _generator))
                     continue
-                line_list.append(line)
+                line_list.append(_parse(_line))
             return MultiLine(line_list)
 
         _lines = list()
@@ -85,20 +88,13 @@ class Parser:
     def parse(self, file:File):
         lines = file.location.read_text().split('\n')
         lines = self.pre_parse(lines)
-        print(lines)
-        raise ValueError
         generator = lines_generator(lines)
         line = next(generator)
 
         while line is not None:
             logger.debug('Processing line: {}'.format(line))
-            if isinstance(line, str):
-                if line.__contains__('{'):
-                    parsed_line = self._multiline_parse(line, generator)
-                    file.add_line(parsed_line)
-                    line = next(generator)
-                    continue
 
+            if isinstance(line, Line) and not line.is_comment:
                 if line.startswith('source'):
                     new_file = File().parse(line, self, file)
                     file.add_line(new_file)
@@ -106,82 +102,50 @@ class Parser:
                     continue
 
                 file.add_line(self._parse(line))
-            else:
-                file.add_line(line)
+                continue
+
+            if isinstance(line, MultiLine):
+                file.add_line(self._multiline_parse(line))
+
+            file.add_line(line)
             line = next(generator)
         return file
 
-    def _parse(self, line:str|list):
+    def _parse(self, line:Line):
 
         for keyword, cls in self.parser_dir.items():
             if line.startswith(keyword):
-                #logger.debug('Parsing line: {}'.format(line))
-                new_cls = cls()
-                return new_cls.parse(line, self)
+                return line.set_pars_obj(cls)
 
         logger.error('No parser found for line: {}'.format(line))
-        return Comment().parse(line, self)
+        return line.set_commented()
 
-    def _parse_lines(self, line:list):
-        _line = line[0]
+    def _multiline_parse(self, multiline:MultiLine, sub_category = False):
 
-        for keyword, cls in self.parser_dir.items():
-            if _line.startswith(keyword):
-                #logger.debug('Parsing line: {}'.format(line))
-                new_cls = cls()
-
-                return new_cls.parse(line, self)
-
-        logger.error('No parser found for lines:\n{}'.format(line))
-        return Comment().parse(line, self)
-
-    def _multiline_parse(self, line:str, generator):
-        line_list = [line]
-
-        while line is not None:
-            line = next(generator)
-
-            if isinstance(line, str):
-                if line.__contains__('}'):
-                    line_list.append(line)
-                    break
-
-                if line.__contains__('{'):
-                    line_list.append(self._multiline_parse(line, generator))
-                    continue
-            line_list.append(line)
-
-        if line is None:
-            logger.error('Unexpected end of file while parsing multiline block')
-            raise StopIteration('Unexpected end of file while parsing multiline block')
-        return self._parse_lines(line_list)
-
-    @staticmethod
-    def var_inline_parse(line:str):
-        line = line.split('=')[1].strip()
-        _vars = line.split(',')
-        _vars = [v.strip() for v in _vars]
-        return _vars
-
-    def _var_multiline_parse(self, line):
-        for cls in self.inline_dir:
-            if cls.check(line):
-                new_cls = cls()
-                return new_cls.parse(line, self)
-        logger.error('No parser found for inline: {}'.format(line))
-        return Comment().parse(line, self)
-
-    def var_multiline_parse(self, lines:list[str | list]):
+        category_name = multiline.lines[0]
         _return_list = list()
-        for line in lines[1:-1]:
-            if isinstance(line, list):
-                _return_list.append(self.var_multiline_parse(line))
+        for line in multiline.lines[1:-1]:
+            if isinstance(line, Line) and not line.is_comment:
+                _return_list.append(self._inline_parse(line))
                 continue
 
-            if isinstance(line, str):
-                _return_list.append(self._var_multiline_parse(line))
+            if isinstance(line, MultiLine):
+                _return_list.append(self._multiline_parse(line, True))
                 continue
 
             _return_list.append(line)
-        return inline_module.Category().parse(_return_list, lines[0], self)
+        category = Category(category_name, _return_list)
+        if not sub_category:
+            if category_name not in CATEGORIES:
+                logger.error('No parser found for category: {}'.format(category_name))
+                multiline.set_commented()
+
+        return multiline.set_category_obj(category)
+
+    def _inline_parse(self, line:Line):
+        for cls in self.inline_dir:
+            if cls.check(line):
+                return line.set_pars_obj(cls)
+        logger.error('No parser found for inline: {}'.format(line))
+        return line.set_commented()
 

@@ -75,9 +75,9 @@ class Monitor(Base):
     position= ''
     scale= ''
 
-    def parse(self, line:str, parser_class):
+    def parse(self, line:str):
         self._parse(line)
-        self.name, self.resolution, self.position, self.scale = parser_class.var_inline_parse(line)
+        self.name, self.resolution, self.position, self.scale = self.var_inline_parse(line)
         return self
 
     def __str__(self):
@@ -91,9 +91,9 @@ class Env(Base):
     var_name = ''
     var_value = ''
 
-    def parse(self, line:str, parser_class):
+    def parse(self, line:str):
         self._parse(line)
-        self.var_name, self.var_value = parser_class.var_inline_parse(line)
+        self.var_name, self.var_value = self.var_inline_parse(line)
         return self
 
     def __str__(self):
@@ -116,109 +116,8 @@ class Var(Base):
     def __str__(self):
         return f'${self.var_name} = {self.var_value}'
 
-@register
-@dataclasses.dataclass
-class WindowRule(MultiLineBase):
-
-    keyword: ClassVar[str] = 'windowrule'
-
-    def parse(self, lines, parser_class):
-        if isinstance(lines, str):
-            return Comment().parse(lines, None)
-        return super().parse(lines, parser_class)
-
-@register
-@dataclasses.dataclass
-class Animations(WindowRule):
-
-    keyword: ClassVar[str] = 'animations'
-
-@register
-@dataclasses.dataclass
-class General(MultiLineBase):
-
-    keyword: ClassVar[str] = 'general'
-
-@register
-@dataclasses.dataclass
-class Decoration(MultiLineBase):
-
-    keyword: ClassVar[str] = 'decoration'
-
-@register
-@dataclasses.dataclass
-class Input(MultiLineBase):
-
-    keyword: ClassVar[str] = 'input'
-
-@register
-@dataclasses.dataclass
-class Gestures(MultiLineBase):
-
-    keyword: ClassVar[str] = 'gestures'
-
-@register
-@dataclasses.dataclass
-class Group(MultiLineBase):
-
-    keyword: ClassVar[str] = 'group'
-
-@register
-@dataclasses.dataclass
-class Misc(MultiLineBase):
-
-    keyword: ClassVar[str] = 'misc'
-
-@register
-@dataclasses.dataclass
-class Binds(MultiLineBase):
-
-    keyword: ClassVar[str] = 'binds'
-
-@register
-@dataclasses.dataclass
-class Xwayland(MultiLineBase):
-
-    keyword: ClassVar[str] = 'xwayland'
-
-@register
-@dataclasses.dataclass
-class Opengl(MultiLineBase):
-
-    keyword: ClassVar[str] = 'opengl'
-
-@register
-@dataclasses.dataclass
-class Render(MultiLineBase):
-
-    keyword: ClassVar[str] = 'render'
-
-@register
-@dataclasses.dataclass
-class Debug(MultiLineBase):
-
-    keyword: ClassVar[str] = 'debug'
-
-@register
-@dataclasses.dataclass
-class Dwindle(MultiLineBase):
-
-    keyword: ClassVar[str] = 'dwindle'
-
-@register
-@dataclasses.dataclass
-class Master(MultiLineBase):
-
-    keyword: ClassVar[str] = 'master'
-
-@register
-@dataclasses.dataclass
-class Device(MultiLineBase):
-
-    keyword: ClassVar[str] = 'device'
-
-@register
-@dataclasses.dataclass
-class Plugin(MultiLineBase):
-
-    keyword: ClassVar[str] = 'plugin'
+CATEGORIES = (
+    'windowrule', 'animations', 'general', 'decoration', 'input', 'gestures',
+    'group', 'misc', 'binds', 'xwayland', 'opengl', 'render', 'debug', 'dwindle',
+    'master', 'device', 'plugin'
+)

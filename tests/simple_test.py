@@ -2,6 +2,7 @@ import Hyprlua
 from Hyprlua import parser, config_file
 from pathlib import Path
 
+
 def test_parser():
     config_path = Path(__file__).parent
     print(config_path)
@@ -10,3 +11,5 @@ def test_parser():
     result = _parser.start_parser()
     print(result)
     assert True
+
+test_parser()

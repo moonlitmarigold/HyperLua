@@ -73,15 +73,15 @@ class Color(Base):
 @dataclasses.dataclass
 class Category(Base):
     category_name = ''
+    lines:list = None
 
     def parse(self, lines:list, category_name:str):
-        self.category_name = category_name.replace('{', '').strip()
-        self._parse(lines)
+        self.category_name = category_name
+        self.lines = lines
         return self
 
     def __str__(self):
-        str_lines = super().__str__()
-        return f'{self.category_name} ' + '{\n' + str_lines + '}\n'
+        return str_lines(self.lines)
 
 @register
 @dataclasses.dataclass

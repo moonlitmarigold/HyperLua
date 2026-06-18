@@ -4,15 +4,30 @@ from typing import ClassVar
 logger = logging.getLogger('HyprLua')
 
 @dataclasses.dataclass
-class EmptyLine:
+class Indent:
 
-    commented: bool = False
+    indent_count:int = 0
+    indent_spaces:int = 4
 
     def __str__(self):
-        if not self.commented:
-            return ''
-        else:
-            return '#'
+        return ' ' * self.indent_spaces * self.indent_count
+
+    def add_indent(self):
+        self.indent_count += 1
+        return self
+
+
+def str_lines(lines:list):
+    return '\n'.join([str(x) for x in lines])
+
+@dataclasses.dataclass
+class EmptyLine:
+
+    def set_commented(self):
+        pass
+
+    def __str__(self):
+        return ''
 
 @dataclasses.dataclass
 class Line:
@@ -45,11 +60,12 @@ class Line:
 
     def __str__(self):
         if self.pars_obj is None:
-            return self.text
-        _str:str = self.pars_obj.__str__().strip()
+            _str =  self.text
+        else:
+            _str:str = self.pars_obj.__str__().strip()
 
         if self.is_comment:
-            return self.return_comment(_str)
+            _str =  self.return_comment(_str)
         if self.comment.strip() == '':
             return _str
         return _str + ' # ' + self.comment
@@ -62,15 +78,20 @@ class MultiLine:
     is_comment:bool = False
     category_obj = None
 
+
     def __str__(self):
-        return ''
+        if self.category_obj is None:
+            return str_lines(self.lines)
+        return self.category_obj.__str__()
 
     def set_commented(self):
         self.is_comment = True
+        for _line in self.lines:
+            _line.set_commented()
         return self
 
     def set_category_obj(self, category_obj):
-        self.category_obj = category_obj()
+        self.category_obj = category_obj
         return self
 
 

@@ -9,33 +9,6 @@ def register(cls):
     REGISTRY.append(cls)
     return cls  # must return cls so the class still works normally
 
-@register
-@dataclasses.dataclass
-class Comment(Base):
-    keyword: ClassVar[str] = '#'
-
-    def parse(self, line, parser_class):
-        self._parse(line)
-        return self
-
-    @staticmethod
-    def add_comment(line:str):
-        if line.startswith('#'):
-            return line
-        else:
-            return '#' + ' ' + line
-
-    def __str__(self):
-        line = super().__str__()
-
-        if self.is_single_line:
-            line = self.add_comment(line)
-        if self.is_multiline:
-            lines = line.split('\n')
-            lines = [self.add_comment(l) for l in lines[:-1]]
-            line = '\n'.join(lines)
-        return line
-
 
 @register
 @dataclasses.dataclass
@@ -63,7 +36,7 @@ class File(Base):
         self.lines.append(line_obj)
 
     def __str__(self):
-        return self._str_lines(self.lines, self.commands)
+        return str_lines(self.lines)
 
 @register
 @dataclasses.dataclass
@@ -107,7 +80,7 @@ class Var(Base):
     var_name = ''
     var_value = ''
 
-    def parse(self, line:str, parser_class):
+    def parse(self, line:str):
         self._parse(line)
         _vars = line.split('=')
         self.var_name, self.var_value = _vars[0].strip()[1:], _vars[1].strip()

@@ -91,7 +91,7 @@ class Parser:
             logger.error('Config file does not exist: {}'.format(self.conf_file))
             return None
 
-        hyprland_file = File(name=self.conf_file.name, conf_obj=self.conf_obj)
+        hyprland_file = File(conf_obj=self.conf_obj)
         return self.parse(hyprland_file)
         
     def parse(self, file:File):

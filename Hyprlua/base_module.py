@@ -29,6 +29,10 @@ class EmptyLine:
     def __str__(self):
         return ''
 
+    def add_indent(self):
+        pass
+
+
 @dataclasses.dataclass
 class Line:
 
@@ -36,6 +40,7 @@ class Line:
     comment:str = ''
     pars_obj = None
     is_comment:bool = False
+    indent:Indent = dataclasses.field(default_factory=Indent)
 
     def __post_init__(self):
         if self.text.__contains__('#') and not self.is_comment:
@@ -52,6 +57,11 @@ class Line:
     def startswith(self, key):
         return self.text.startswith(key)
 
+    def add_indent(self):
+        self.indent.add_indent()
+        return self
+
+
     @staticmethod
     def return_comment(_str):
         if _str.startswith('#'):
@@ -67,8 +77,8 @@ class Line:
         if self.is_comment:
             _str =  self.return_comment(_str)
         if self.comment.strip() == '':
-            return _str
-        return _str + ' # ' + self.comment
+            return str(self.indent) + _str
+        return str(self.indent) + _str + ' # ' + self.comment
 
 @dataclasses.dataclass
 class MultiLine:
@@ -77,6 +87,11 @@ class MultiLine:
     comments:list = ()
     is_comment:bool = False
     category_obj = None
+    indent:Indent = dataclasses.field(default_factory=Indent)
+
+    def __post_init__(self):
+        for line in self.lines[1:-1]:
+            line.add_indent()
 
 
     def __str__(self):
@@ -88,6 +103,11 @@ class MultiLine:
         self.is_comment = True
         for _line in self.lines:
             _line.set_commented()
+        return self
+
+    def add_indent(self):
+        for line in self.lines:
+            line.add_indent()
         return self
 
     def set_category_obj(self, category_obj):

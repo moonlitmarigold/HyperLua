@@ -13,10 +13,13 @@ def register(cls):
 @register
 @dataclasses.dataclass
 class File(Base):
-    name: str = ''
     conf_obj:config_file.Conf | config_file.ConfExtraFile = None
     keyword: ClassVar[str] = 'source'
     lines:list = dataclasses.field(default_factory=list)
+
+    @property
+    def name(self):
+        return self.location.name
 
     @property
     def location(self):
@@ -56,6 +59,9 @@ class Monitor(Base):
     def __str__(self):
         return f'monitor = {self.name}, {self.resolution}, {self.position}, {self.scale}'
 
+    def build(self):
+        pass
+
 @register
 @dataclasses.dataclass
 class Env(Base):
@@ -71,6 +77,9 @@ class Env(Base):
 
     def __str__(self):
         return f'env = {self.var_name},{self.var_value}'
+
+    def build(self):
+        return f'hl.env("{self.var_name}", "{self.var_value}")'
 
 @register
 @dataclasses.dataclass
@@ -88,6 +97,9 @@ class Var(Base):
 
     def __str__(self):
         return f'${self.var_name} = {self.var_value}'
+
+    def build(self):
+        return f'local {self.var_name} = "{self.var_value}"'
 
 CATEGORIES = (
     'windowrule', 'animations', 'general', 'decoration', 'input', 'gestures',

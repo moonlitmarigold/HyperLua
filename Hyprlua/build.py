@@ -1,5 +1,5 @@
 from . import base_module, dataclass_module, inline_module
-from .dataclass_module import File
+from .dataclass_module import File, ExecOnce, Exec
 from .base_module import Line, MultiLine
 from . import config_file
 import logging
@@ -35,10 +35,50 @@ class Builder:
                 multilines.append(line)
             else:
                 new_lines.append(line)
-        return multilines, new_lines
+        return new_lines, multilines
+
+    def collect_exec(self, lines):
+        new_lines = []
+        exec_lines = []
+        for line in lines:
+            if isinstance(line, Line) and (isinstance(line.pars_obj, ExecOnce) or isinstance(line.pars_obj, Exec)):
+                exec_lines.append(line)
+            else:
+                new_lines.append(line)
+        return new_lines, exec_lines
 
     def build(self, file:File):
         logger.debug(f'Building {file.name}')
         output_path = self.resolve_path(file)
         lines, multilines = self.collect_multilines(file.lines)
+
+        return_lines = list()
+        return_lines.append('-- This Hyprland lua config is auto translated from the old Hyprlang')
+        return_lines.append('')
+
+
+        # Build all multilines at the top of the file
+        if multilines:
+            return_lines.append('-- Hyprland variables')
+            return_lines.append('')
+            for l in multilines:
+                l.add_indent()
+            return_lines.append('hl.config({')
+            return_lines.append('\n'.join([l.build() for l in multilines]))
+            return_lines.append('}, true)')
+            return_lines.append('')
+
+        lines, exec_lines = self.collect_exec(lines)
+        if exec_lines:
+            return_lines.append('-- Hyprland start execs')
+            return_lines.append('')
+            for l in exec_lines:
+                l.add_indent()
+            return_lines.append('hl.on("hyprland.start", function()')
+            return_lines.append('\n'.join([l.build() for l in exec_lines]))
+            return_lines.append('end)')
+            return_lines.append('')
+
+
+        return '\n'.join(return_lines)
 

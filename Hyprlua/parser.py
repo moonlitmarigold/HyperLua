@@ -133,6 +133,7 @@ class Parser:
         return line.set_commented()
 
     def _multiline_parse(self, multiline:MultiLine, sub_category = False):
+        logger.debug('Multiline parsing for {}'.format(str(multiline)))
         category_name = multiline.lines[0].text.split('{')[0].strip()
 
         if not sub_category:
@@ -154,8 +155,9 @@ class Parser:
         return multiline.set_category_obj(category)
 
     def _inline_parse(self, line:Line):
+        logger.debug('Inline parsing for {}'.format(str(line)))
         for cls in self.inline_dir:
-            if cls.check(str(line)):
+            if cls.check(line.text):
                 return line.set_pars_obj(cls)
         logger.error('No parser found for inline: {}'.format(line))
         return line.set_commented()

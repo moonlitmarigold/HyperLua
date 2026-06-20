@@ -20,8 +20,12 @@ class Indent:
 def str_lines(lines:list):
     return '\n'.join([str(x) for x in lines])
 
+def build_lines(lines:list):
+    return '\n'.join([str(x) for x in lines])
+
 @dataclasses.dataclass
 class EmptyLine:
+    pars_obj = None
 
     def set_commented(self):
         pass
@@ -31,6 +35,9 @@ class EmptyLine:
 
     def add_indent(self):
         pass
+
+    def build(self):
+        return ''
 
 
 @dataclasses.dataclass
@@ -61,12 +68,24 @@ class Line:
         self.indent.add_indent()
         return self
 
+    def build(self):
+        if self.pars_obj is None:
+            _str =  self.text
+        else:
+            _build = self.pars_obj.build()
+            _str:str = _build.strip()
+
+        if self.is_comment:
+            _str =  self.return_comment(_str, '--')
+        if self.comment.strip() == '':
+            return str(self.indent) + _str
+        return str(self.indent) + _str + ' -- ' + self.comment
 
     @staticmethod
-    def return_comment(_str):
-        if _str.startswith('#'):
+    def return_comment(_str, comment_car='#'):
+        if _str.startswith(comment_car):
             return _str
-        return '#' + ' ' + _str
+        return comment_car + ' ' + _str
 
     def __str__(self):
         if self.pars_obj is None:
@@ -93,11 +112,15 @@ class MultiLine:
         for line in self.lines[1:-1]:
             line.add_indent()
 
-
     def __str__(self):
         if self.category_obj is None:
             return str_lines(self.lines)
         return self.category_obj.__str__()
+
+    def build(self):
+        if self.category_obj is None:
+            return build_lines(self.lines)
+        return self.category_obj.build()
 
     def set_commented(self):
         self.is_comment = True
@@ -203,6 +226,21 @@ class Base:
             return line[len(self.keyword):].strip()
         else:
             return line
+
+    @staticmethod
+    def is_float(s):
+        try:
+            float(s)
+            return True
+        except ValueError:
+            return False
+
+    def return_var_value(self, var_value):
+        if self.is_float(var_value):
+            return var_value
+        if var_value == 'true' or  var_value == 'false':
+            return var_value
+        return f'"{var_value}"'
 
 @dataclasses.dataclass
 class MultiLineBase:

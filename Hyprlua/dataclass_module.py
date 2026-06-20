@@ -60,7 +60,13 @@ class Monitor(Base):
         return f'monitor = {self.name}, {self.resolution}, {self.position}, {self.scale}'
 
     def build(self):
-        pass
+        _list = (
+            f'output = {self.name}'
+            f'mode = {self.resolution}'
+            f'position = {self.position}'
+            f'scale = {self.scale}'
+        )
+        return f'hl.monitor({{ {', '.join(_list) }, }}))'
 
 @register
 @dataclasses.dataclass
@@ -90,7 +96,6 @@ class Var(Base):
     var_value = ''
 
     def parse(self, line:str):
-        self._parse(line)
         _vars = line.split('=')
         self.var_name, self.var_value = _vars[0].strip()[1:], _vars[1].strip()
         return self
@@ -99,7 +104,30 @@ class Var(Base):
         return f'${self.var_name} = {self.var_value}'
 
     def build(self):
-        return f'local {self.var_name} = "{self.var_value}"'
+        return f'local {self.var_name} = {self.return_var_value(self.var_value)}'
+
+@register
+@dataclasses.dataclass
+class ExecOnce(Base):
+    keyword: ClassVar[str] = 'exec-once'
+    start_script = ''
+
+    def parse(self, line:str):
+        self.start_script = line.split('=')[1].strip()
+        return self
+
+    def __str__(self):
+        return f'{self.keyword} = {self.start_script}'
+
+    def build(self):
+        return f'hl.exec_cmd("{self.start_script}")'
+
+@register
+@dataclasses.dataclass
+class Exec(ExecOnce):
+    keyword: ClassVar[str] = 'exec'
+
+
 
 CATEGORIES = (
     'windowrule', 'animations', 'general', 'decoration', 'input', 'gestures',

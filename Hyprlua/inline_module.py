@@ -28,25 +28,8 @@ class Match(Base):
     def __str__(self):
         return f'match:{self.match_type}={self.match_value}'
 
-@register
-@dataclasses.dataclass
-class Var(Base):
-
-    var_name = ''
-    var_value = ''
-
-    @staticmethod
-    def check(line:str):
-        if line.__contains__("="):
-            return True
-        return False
-
-    def parse(self, line:str):
-        self.var_name, self.var_value = [x.strip() for x in line.split('=')]
-        return self
-
-    def __str__(self):
-        return f'{self.var_name} = {self.var_value}'
+    def build(self):
+        return f'match = {{ {self.match_type} = "{self.match_value}" }}" }},'
 
 @register
 @dataclasses.dataclass
@@ -69,6 +52,12 @@ class Color(Base):
         self.color_type = front.split('.')[1]
         return self
 
+    def __str__(self):
+        return f'col.{self.color_type} = {self.color}'
+
+    def build(self):
+        return f'col.{self.color_type} = {self.color},'
+
 
 @dataclasses.dataclass
 class Category(Base):
@@ -80,15 +69,53 @@ class Category(Base):
         self.lines = lines
         return self
 
+    def build(self):
+        self.lines[0].text = f'{self.category_name} = {{'
+        build_list = [self.lines[0].build()]
+        for line in self.lines[1:-1]:
+            build_list.append(line.build())
+        self.lines[-1].text = '},'
+        build_list.append(self.lines[-1].build())
+        return '\n'.join(build_list)
+
     def __str__(self):
         return str_lines(self.lines)
 
 @register
 @dataclasses.dataclass
 class WindowRule(Base):
-    ...
+
+    @staticmethod
+    def check(line:str):
+        return False
 
 @register
 @dataclasses.dataclass
 class Animation(Base):
-    ...
+
+    @staticmethod
+    def check(line:str):
+        return False
+
+@register
+@dataclasses.dataclass
+class Var(Base):
+
+    var_name = ''
+    var_value = ''
+
+    @staticmethod
+    def check(line:str):
+        if line.__contains__("="):
+            return True
+        return False
+
+    def parse(self, line:str):
+        self.var_name, self.var_value = [x.strip() for x in line.split('=')]
+        return self
+
+    def __str__(self):
+        return f'{self.var_name} = {self.var_value}'
+
+    def build(self):
+        return f'{self.var_name} = {self.return_var_value(self.var_value)},'

@@ -68,6 +68,12 @@ class Line:
         self.indent.add_indent()
         return self
 
+    def from_line(self, text):
+        l = Line(text)
+        for x in range(self.indent.indent_count):
+            l.add_indent()
+        return l
+
     def build(self):
         if self.pars_obj is None:
             _str =  self.text
@@ -254,4 +260,34 @@ class MultiLineBase:
 
     def __str__(self):
         return str(self.category_obj)
+
+@dataclasses.dataclass
+class Gradient:
+    color1 = ''
+    color2 = ''
+    angle = ''
+
+    @staticmethod
+    def check(line:str):
+        if len(line.split(' ')) != 1:
+            return True
+        return False
+
+    def parse(self, line:str):
+        self.color1, self.color2, self.angle = line.split(' ')
+        return self
+
+    def __str__(self):
+        return f'{self.color1} {self.color2} {self.angle}'
+
+    @staticmethod
+    def return_color_value(color:str):
+        if color.startswith('rgb'):
+            return f'"{color}"'
+        return color
+
+    def build(self):
+        return f'{{ colors = {{{self.return_color_value(self.color1)}, {self.return_color_value(self.color2)}}}, angle = {self.angle} }}'
+
+
 

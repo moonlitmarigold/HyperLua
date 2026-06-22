@@ -16,6 +16,7 @@ class File(Base):
     conf_obj:config_file.Conf | config_file.ConfExtraFile = None
     keyword: ClassVar[str] = 'source'
     lines:list = dataclasses.field(default_factory=list)
+    rel_location:str = ''
 
     @property
     def name(self):
@@ -30,6 +31,7 @@ class File(Base):
         return self.conf_obj.conf_dir
 
     def parse(self, line:str, parser_class, parent_file):
+        self.rel_location = line.split('=')[1].strip()
         location = Path(line.split('=')[1].strip()).expanduser()
         self.conf_obj = config_file.ConfExtraFile(parent_file.conf_obj.conf_dir / location)
         parser_class.parse(self)
@@ -40,6 +42,9 @@ class File(Base):
 
     def __str__(self):
         return str_lines(self.lines)
+
+    def build(self, builder_obj):
+        return f'require("{self.rel_location}")'
 
 @register
 @dataclasses.dataclass
@@ -61,10 +66,10 @@ class Monitor(Base):
 
     def build(self):
         _list = (
-            f'output = {self.name}'
-            f'mode = {self.resolution}'
-            f'position = {self.position}'
-            f'scale = {self.scale}'
+            f'output = {self.return_var_value(self.name)}',
+            f'mode = {self.return_var_value(self.resolution)}',
+            f'position = {self.return_var_value(self.position)}',
+            f'scale = {self.return_var_value(self.scale)}',
         )
         return f'hl.monitor({{ {', '.join(_list) }, }}))'
 
@@ -127,6 +132,32 @@ class ExecOnce(Base):
 class Exec(ExecOnce):
     keyword: ClassVar[str] = 'exec'
 
+@register
+@dataclasses.dataclass
+class Permission(Base):
+    keyword: ClassVar[str] = 'permission'
+    permission_prg = ''
+    permission_type = ''
+    permission_allow = ''
+
+    def parse(self, line:str):
+        self.permission_prg, self.permission_type, self.permission_allow =  [l.strip() for l in line.split('=')[1].strip().split(',')]
+        return self
+
+    def __str__(self):
+        return f'permission = {self.permission_prg}, {self.permission_type}, {self.permission_allow}'
+
+    def build(self):
+        _return = (
+            self.return_var_value(self.permission_prg),
+            self.return_var_value(self.permission_type),
+            self.return_var_value(self.permission_allow),
+        )
+        return f'hl.permission({', '.join(_return)})'
+
+@register
+@dataclasses.dataclass
+class Workspace(Base):
 
 
 CATEGORIES = (
@@ -134,3 +165,8 @@ CATEGORIES = (
     'group', 'misc', 'binds', 'xwayland', 'opengl', 'render', 'debug', 'dwindle',
     'master', 'device', 'plugin'
 )
+
+HL_CONFIG_EXPECTIONS = (
+    'gestures', 'windowrule',
+)
+

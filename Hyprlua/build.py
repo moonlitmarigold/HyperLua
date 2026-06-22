@@ -31,7 +31,7 @@ class Builder:
         multilines = []
         new_lines = []
         for line in lines:
-            if isinstance(line, MultiLine):
+            if isinstance(line, MultiLine) and line.category_obj.category_name not in dataclass_module.HL_CONFIG_EXPECTIONS:
                 multilines.append(line)
             else:
                 new_lines.append(line)
@@ -68,6 +68,7 @@ class Builder:
             return_lines.append('}, true)')
             return_lines.append('')
 
+        # Build all execs
         lines, exec_lines = self.collect_exec(lines)
         if exec_lines:
             return_lines.append('-- Hyprland start execs')
@@ -79,6 +80,12 @@ class Builder:
             return_lines.append('end)')
             return_lines.append('')
 
+        # Build the rest of the file
+        for line in lines:
+            if isinstance(line, File):
+                return_lines.append(line.build(self))
+            else:
+                return_lines.append(line.build())
 
         return '\n'.join(return_lines)
 

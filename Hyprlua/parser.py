@@ -157,8 +157,10 @@ class Parser:
     def _inline_parse(self, line:Line):
         logger.debug('Inline parsing for {}'.format(str(line)))
         for cls in self.inline_dir:
-            if cls.check(line.text):
+            if cls.check(line.text.strip()):
                 return line.set_pars_obj(cls)
+        if inline_module.Var.check(line.text.strip()):
+            return line.set_pars_obj(inline_module.Var)
         logger.error('No parser found for inline: {}'.format(line))
         return line.set_commented()
 

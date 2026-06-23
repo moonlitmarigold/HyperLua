@@ -1,5 +1,7 @@
+import dataclasses
 from pathlib import Path
 from .base_module import *
+from . import inline_module
 from . import config_file
 import copy
 
@@ -159,6 +161,56 @@ class Permission(Base):
 @dataclasses.dataclass
 class Workspace(Base):
 
+    keyword: ClassVar[str] = 'workspace'
+    rules:list = dataclasses.field(default_factory=lambda: [])
+
+    def parse(self, line:str):
+        keyword, value = [x.strip() for x in line.split("=", 1)]
+
+        for i, token in enumerate([x.strip() for x in value.split(",") if x.strip()]):
+            if ":" not in token and i == 0:
+                _var = inline_module.Var()
+                _var.var_name = 'workspace'
+                _var.var_value = token
+                self.rules.append(_var)
+                continue
+
+            k, v = [x.strip() for x in token.split(":", 1)]
+            _var = inline_module.Var()
+            if k == 'name':
+                _var.var_name = 'workspace'
+                _var.var_value = token
+                self.rules.append(_var)
+                continue
+
+            _var.var_name = k
+            _var.var_value = v
+            self.rules.append(_var)
+
+        return self
+
+    def __str__(self):
+        values = [str(x) for x in self.rules]
+        str_values = ', '.join(values).replace(' = ', ':')
+        return f'workspace = {str_values}'
+
+    def build(self):
+        return f'hl.workspace_rule({{ {' '.join([x.build() for x in self.rules])} }})'
+
+
+@register
+@dataclasses.dataclass
+class Windowrule(Base):
+    keyword: ClassVar[str] = 'windowrule'
+
+    def parse(self, line: str):
+        return self
+
+    def __str__(self):
+        return ''
+
+    def build(self):
+        return ''
 
 CATEGORIES = (
     'windowrule', 'animations', 'general', 'decoration', 'input', 'gestures',

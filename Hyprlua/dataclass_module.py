@@ -4,6 +4,7 @@ from .base_module import *
 from . import inline_module
 from . import config_file
 import copy
+from typing import Callable, Dict
 
 REGISTRY: list = list()
 
@@ -46,6 +47,7 @@ class File(Base):
         return str_lines(self.lines)
 
     def build(self, builder_obj):
+        builder_obj.build(self)
         return f'require("{self.rel_location}")'
 
 @register
@@ -201,21 +203,115 @@ class Workspace(Base):
 @register
 @dataclasses.dataclass
 class Windowrule(Base):
-    keyword: ClassVar[str] = 'windowrule'
+    keyword: ClassVar[str] = 'windowrule '
+    action = ''
+    match:inline_module.Match = None
+    bool_rules = {
+        "float": "float",
+        "fakefullscreen": "fake_fullscreen",
+        "pin": "pin",
+        "noblur": "no_blur",
+        "noanim": "no_anim",
+        "noborder": "no_border",
+        "noshadow": "no_shadow",
+        "nofocus": "no_focus",
+        "nomaxsize": "no_max_size",
+        "stayfocused": "stay_focused",
+        "dimaround": "dim_around",
+        "keepaspectratio": "keep_aspect_ratio",
+        "decorate": "decorate",
+        "renderunfocused": "render_unfocused",
+        "center": "center",
+    }
+
+    rule_number = 0
+
+    translation: Dict[str, Callable] = dataclasses.field(default_factory=lambda: {
+        "opacity": inline_module.Opacity().parse,
+        "fullscreen": inline_module.fullscreen,
+        "size": inline_module.Size().parse,
+        "move": inline_module.Size().set_key('move').parse,
+        "minsize": inline_module.Size().set_key('min_size').parse,
+        "maxsize": inline_module.Size().set_key('max_size').parse,
+        "workspace": inline_module.workspace,
+        "monitor": inline_module.monitor,
+        "tile": inline_module.tile,
+        "bordersize": inline_module.bordersize,
+        "rounding": inline_module.rounding,
+        "suppressevent": inline_module.suppressevent,
+        "bordercolor": inline_module.BorderColor().parse,
+    })
 
     def parse(self, line: str):
+        keyword, value = [x.strip() for x in line.split("=", 1)]
+        action, regex = [x.strip() for x in value.split(",", 1)]
+        self.action = action
+        _match = inline_module.Match()
+        _match.match_type = 'class'
+        _match.match_value = regex
+        self.match = _match
         return self
 
     def __str__(self):
-        return ''
+        return f'windowrule = {self.action}, {str(self.match)}'
 
     def build(self):
-        return ''
+        options = list()
+        options.append(f'name = "windowrule{self.rule_number}",')
+        options.append(self.match.build())
+        options.append(self._action())
+        return 'hl.window_rule({ ' + ' '.join(options) + ' })'
+
+    def _action(self):
+        _action = self.action.strip().split(' ')[0].strip()
+        logger.debug(f'action = {self.action}')
+        if _action in self.bool_rules:
+            return f'{self.bool_rules[_action]} = true,'
+        if _action == 'title':
+            return 'float = true,'
+        if _action in self.translation.keys():
+            return self.translation[_action](self.action).build()
+        return self.action
+
+# windowrulev2
+
+@register
+@dataclasses.dataclass
+class Windowrulev2(Windowrule):
+    keyword: ClassVar[str] = 'windowrulev2'
+    multi_match:list = dataclasses.field(default_factory=lambda: [])
+
+
+    def parse(self, line: str):
+        #"windowrulev2 = noblur, class:^(firefox)$,title:^(.*YouTube.*)$"
+        keyword, value = [x.strip() for x in line.split("=", 1)]
+        parts = [x.strip() for x in value.split(",")]
+        self.action = parts[0]
+        for _match in parts[1:]:
+            type_match, regex = [x.strip() for x in _match.split(":", 1)]
+            self.multi_match.append(inline_module.Var().set(type_match, regex))
+        return self
+
+    def __str__(self):
+        _l = list()
+        _l.append(self.action)
+        _l.extend([f'{x.var_name}:{x.var_value}' for x in self.multi_match])
+        return 'windowrulev2 = ' + ', '.join(_l)
+
+    def build(self):
+        options = list()
+        options.append(f'name = "windowrule{self.rule_number}",')
+        options.append(self._match())
+        options.append(self._action())
+        return 'hl.window_rule({ ' + ' '.join(options) + ' })'
+
+    def _match(self):
+        return 'match = { ' + ' '.join([x.build() for x in self.multi_match]) + ' },'
 
 CATEGORIES = (
     'windowrule', 'animations', 'general', 'decoration', 'input', 'gestures',
     'group', 'misc', 'binds', 'xwayland', 'opengl', 'render', 'debug', 'dwindle',
-    'master', 'device', 'plugin'
+    'master', 'device', 'plugin', 'ecosystem'
 )
 
 HL_CONFIG_EXPECTIONS = (

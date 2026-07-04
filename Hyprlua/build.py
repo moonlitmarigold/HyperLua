@@ -14,6 +14,8 @@ class Builder:
         self.input_conf:config_file.Conf|config_file.ConfExtraFile = input_conf
         self.output_conf:config_file.Conf|config_file.ConfExtraFile = output_conf
 
+        self.windowrule = 1
+
 
     def resolve_path(self, file:File):
         diff = file.location.relative_to(self.input_conf.conf_dir)
@@ -41,11 +43,19 @@ class Builder:
         new_lines = []
         exec_lines = []
         for line in lines:
-            if isinstance(line, Line) and (isinstance(line.pars_obj, ExecOnce) or isinstance(line.pars_obj, Exec)):
+            if isinstance(line, Line) and (isinstance(line.pars_obj, ExecOnce) and not isinstance(line.pars_obj, Exec)):
                 exec_lines.append(line)
             else:
                 new_lines.append(line)
         return new_lines, exec_lines
+
+    def set_rule_numbers(self, lines):
+        for line in lines:
+            if isinstance(line, Line) and isinstance(line.pars_obj, dataclass_module.Windowrule):
+                line.pars_obj.rule_number = self.windowrule
+                self.windowrule += 1
+        
+        return lines
 
     def build(self, file:File):
         logger.debug(f'Building {file.name}')
@@ -80,6 +90,9 @@ class Builder:
             return_lines.append('end)')
             return_lines.append('')
 
+        # Set rule number to have syntax like 'windowrule1', 'windowrule2', etc.
+        lines = self.set_rule_numbers(lines)
+
         # Build the rest of the file
         for line in lines:
             if isinstance(line, File):
@@ -87,5 +100,7 @@ class Builder:
             else:
                 return_lines.append(line.build())
 
-        return '\n'.join(return_lines)
+        full_text = '\n'.join(return_lines)
+        output_path.write_text(full_text)
+        return full_text
 

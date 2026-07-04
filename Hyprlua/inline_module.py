@@ -84,6 +84,11 @@ class SingleColor(Base):
         self.color_name, self.color = [l.strip() for l in line.split('=')]
         return self
 
+    def set(self, color_name, color):
+        self.color_name = color_name
+        self.color = color
+        return self
+
     def __str__(self):
         return f'{self.color_name} = {Gradient.return_color_value(self.color)}'
 
@@ -137,6 +142,11 @@ class Category(Base):
 class Animation(Base):
 
     animation_rule:str = ''
+    leaf = ''
+    enabled = True
+    speed = ''
+    bezier_name = ''
+    style = ''
 
     @staticmethod
     def check(line:str):
@@ -146,19 +156,35 @@ class Animation(Base):
 
     def parse(self, line:str):
         self.animation_rule = line
+        parts = [x.strip() for x in line.split('=', 1)[1].split(',')]
+        self.leaf = parts[0]
+        self.enabled = parts[1].strip() == '1'
+        self.speed = parts[2].strip()
+        self.bezier_name = parts[3].strip()
+        self.style = parts[4].strip() if len(parts) > 4 else ''
         return self
 
     def __str__(self):
         return f'{self.animation_rule}'
 
     def build(self):
-        return f'-- {self.animation_rule}'
+        enabled_str = 'true' if self.enabled else 'false'
+        result = f'hl.animation({{ leaf = "{self.leaf}", enabled = {enabled_str}, speed = {self.speed}, bezier = "{self.bezier_name}"'
+        if self.style:
+            result += f', style = "{self.style}"'
+        result += ' })'
+        return result
 
 @register
 @dataclasses.dataclass
 class Bezier(Base):
 
     bezier = ''
+    curve_name = ''
+    x0 = ''
+    y0 = ''
+    x1 = ''
+    y1 = ''
 
     @staticmethod
     def check(line:str):
@@ -168,13 +194,16 @@ class Bezier(Base):
 
     def parse(self, line:str):
         self.bezier = line
+        parts = [x.strip() for x in line.split('=', 1)[1].split(',')]
+        self.curve_name = parts[0]
+        self.x0, self.y0, self.x1, self.y1 = parts[1], parts[2], parts[3], parts[4]
         return self
 
     def __str__(self):
         return f'{self.bezier}'
 
     def build(self):
-        return f'-- {self.bezier}'
+        return f'hl.curve("{self.curve_name}", {{ type = "bezier", points = {{ {{{self.x0}, {self.y0}}}, {{{self.x1}, {self.y1}}} }} }})'
 
 @dataclasses.dataclass
 class Var(Base):
@@ -188,6 +217,11 @@ class Var(Base):
             return True
         return False
 
+    def set(self, var_name, var_value):
+        self.var_name = var_name
+        self.var_value = var_value
+        return self
+
     def parse(self, line:str):
         self.var_name, self.var_value = [x.strip() for x in line.split('=')]
         if self.var_value.__contains__('yes'):
@@ -199,3 +233,105 @@ class Var(Base):
 
     def build(self):
         return f'{self.var_name} = {self.return_var_value(self.var_value)},'
+
+@dataclasses.dataclass
+class Opacity(Base):
+
+    active:Var = dataclasses.field(default_factory=lambda:Var().set("active", 1))
+    inactive:Var = None
+    keyword = 'opacity'
+
+    def parse(self, line:str):
+        logger.debug('Active before parsing: %s', self.active)
+        logger.debug('Inactive before parsing: %s', self.inactive)
+        parts = line.strip().split(' ')[1:]
+        logger.debug('Parts: %s', parts)
+        if len(parts) == 2:
+            self.active = Var().set("active", float(parts[0]))
+            self.inactive = Var().set("inactive", float(parts[1]))
+        else:
+            self.active = Var().set("active", float(parts[0]))
+        logger.debug('Active after parsing: %s', self.active)
+        logger.debug('Inactive after parsing: %s', self.inactive)
+        return self
+
+    def build(self):
+        if not self.inactive:
+            return f'{self.keyword} = {{ {self.active.build()} }},'
+        return f'{self.keyword} = {{ {self.active.build()} {self.inactive.build()} }},'
+
+@dataclasses.dataclass
+class BorderColor(Opacity):
+
+    active:SingleColor = None
+    inactive:SingleColor = None
+    keyword = 'border_color'
+
+    def parse(self, line:str):
+        parts = line.strip().split(' ')[1:]
+        if len(parts) > 1:
+            self.active = SingleColor().set("active", parts[0])
+            self.inactive = SingleColor().set("inactive", parts[1])
+        return self
+
+class Size(Base):
+
+    num1 = int()
+    num2 = int()
+    keyword:str = 'size'
+
+    def parse(self, line:str):
+        parts = line.strip().split(' ')[1:]
+        if len(parts) != 1:
+            self.num1 = parts[0]
+            self.num2 = parts[1]
+            return self
+        else:
+            self.num1 = parts[0]
+            return self
+
+    def set_key(self, key:str):
+        self.keyword = key
+        return self
+
+    def __str__(self):
+        return f'{self.keyword} {self.num1} {self.num2}'
+
+    def build(self):
+        return f'{self.keyword} = "{self.num1} {self.num2}",'
+
+
+def fullscreen(line:str):
+    parts = line.strip().split(' ')
+    if len(parts) != 1:
+        fullscreen_type  = parts[1]
+        if fullscreen_type == "1":
+            return Var().set("fullscreen_mode", "maximize")
+        if fullscreen_type == "2":
+            return Var().set("fullscreen_mode", "fake")
+    return Var().set("fullscreen", "true")
+
+def workspace(line:str):
+    workspace, mon = line.strip().split(' ')
+    return Var().set("workspace", mon)
+
+def suppressevent(line:str):
+    key, action = [x.strip() for x in line.split(' ')]
+    event = Var().set("suppress_event", action)
+    return event
+
+def monitor(line:str):
+    _, name = line.strip().split(' ', 1)
+    return Var().set("monitor", name)
+
+def tile(line:str):
+    return Var().set("float", "false")
+
+def bordersize(line:str):
+    _, n = line.strip().split(' ', 1)
+    return Var().set("border_size", n)
+
+def rounding(line:str):
+    _, n = line.strip().split(' ', 1)
+    return Var().set("rounding", n)
+

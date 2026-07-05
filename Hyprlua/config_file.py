@@ -12,7 +12,10 @@ class ConfExtraFile:
 
     @property
     def conf_dir(self) -> pathlib.Path:
-        return self.config_file.parent
+        if self.config_file.is_file():
+            return self.config_file.parent
+        else:
+            return self.config_file
 
 @dataclasses.dataclass
 class Conf:

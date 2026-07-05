@@ -16,6 +16,10 @@ class Indent:
         self.indent_count += 1
         return self
 
+    def reset_indent(self):
+        self.indent_count = 0
+        return self
+
 
 def str_lines(lines:list):
     return '\n'.join([str(x) for x in lines])
@@ -66,6 +70,10 @@ class Line:
 
     def add_indent(self):
         self.indent.add_indent()
+        return self
+
+    def reset_indent(self):
+        self.indent.reset_indent()
         return self
 
     def from_line(self, text):
@@ -241,8 +249,9 @@ class Base:
         except ValueError:
             return False
 
-    def return_var_value(self, var_value):
-        if self.is_float(var_value):
+    @staticmethod
+    def return_var_value(var_value):
+        if Base.is_float(var_value):
             return var_value
         if var_value == 'true' or  var_value == 'false':
             return var_value
@@ -287,7 +296,7 @@ class Gradient:
         return color
 
     def build(self):
-        return f'{{ colors = {{{self.return_color_value(self.color1)}, {self.return_color_value(self.color2)}}}, angle = {self.angle} }}'
+        return f'{{ colors = {{{self.return_color_value(self.color1)}, {self.return_color_value(self.color2)}}}, angle = {Base.return_var_value(self.angle)} }}'
 
 
 

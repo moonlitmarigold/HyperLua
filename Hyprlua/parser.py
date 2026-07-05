@@ -12,6 +12,7 @@ def lines_generator(lines:list):
     for line in lines:
         yield line
     yield None
+    yield None
 
 class Parser:
     
@@ -36,7 +37,7 @@ class Parser:
     @staticmethod
     def pre_parse(lines:list):
         logger.info('Starting Preparser')
-        def _parse(_line):
+        def _parse(_line:str):
             _line = _line.strip()
             if _line == '':
                 return EmptyLine()
@@ -50,8 +51,9 @@ class Parser:
                 return Line(_line)
             line_list = [Line(_line)]
 
+            _line = next(generator)
+
             while _line is not None:
-                _line = next(generator)
                 _line = _parse(_line)
 
                 if isinstance(_line, str):
@@ -62,12 +64,13 @@ class Parser:
 
                     if _line.__contains__('{'):
                         line_list.append(_multiline(_line, _generator))
+                        _line = next(generator)
                         continue
 
                     line_list.append(Line(_line))
                 else:
                     line_list.append(_line)
-
+                _line = next(generator)
             return MultiLine(line_list)
 
         _lines = list()
@@ -80,7 +83,8 @@ class Parser:
                 _lines.append(_multiline(line, generator))
             else:
                 _lines.append(line)
-            line = next(generator)
+            if line is not None:
+                line = next(generator)
         logger.debug('Lines after preparsing:{}'.format(_lines))
         return _lines
 

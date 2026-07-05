@@ -47,7 +47,7 @@ require("keybinds/main")
 | `exec = cmd` | runs every reload — use `hl.exec_cmd("cmd")` directly in the file body |
 | `env = VAR,value` | `hl.env("VAR", "value")` |
 | `device { name = ... }` | `hl.device({ name = ..., ... })` |
-| `submap = name ... binds ... submap = reset` | function-handler binds, or `hl.dsp.submap(name)` (see §8) |
+| `submap = name ... binds ... submap = reset` | `hl.define_submap(name, ...)` / `hl.dsp.submap(name)` (see §8) |
 | `plugin { name { opt = val } }` | usually still `hl.config({ plugin = { name = {...} } })` |
 | `# hyprlang noerror true` | not needed — per-`require()` files have isolated error scopes |
 | `# hyprlang if $VAR` / `endif` | plain Lua `if os.getenv("VAR") ~= "" then ... end` |
@@ -147,10 +147,26 @@ hl.animation({ leaf = "windowsOut", enabled = true, speed = 7, bezier = "default
 hl.config({ animations = { enabled = true } })
 ```
 
+**Spring curves (new in the Lua era).** `hl.curve()` isn't limited to beziers anymore — you can
+also define a physics **spring** curve, and reference it from an animation with `spring = NAME`
+(instead of `bezier = NAME`). There was no old hyprlang equivalent for spring-based animations.
+
+```lua
+hl.curve("easy", { type = "spring", mass = 1, stiffness = 71.2633, dampening = 15.8273644 })
+
+hl.animation({ leaf = "windows",   enabled = true, speed = 4.79, spring = "easy" })
+hl.animation({ leaf = "windowsIn", enabled = true, speed = 4.1,  spring = "easy", style = "popin 87%" })
+```
+> Note the field is spelled **`dampening`** (not `damping`), and it's a curve, not an animation
+> field — an `hl.animation({...})` picks a curve by either `bezier = "..."` **or** `spring = "..."`,
+> never both.
+
 | Old field | New field |
 |---|---|
 | `bezier = NAME, X0,Y0,X1,Y1` | `hl.curve(NAME, { type = "bezier", points = { {X0,Y0}, {X1,Y1} } })` |
+| *(no old equivalent)* | `hl.curve(NAME, { type = "spring", mass = M, stiffness = S, dampening = D })` |
 | `animation = EVENT, ONOFF, SPEED, CURVE, STYLE` | `hl.animation({ leaf = EVENT, enabled = (ONOFF==1), speed = SPEED, bezier = CURVE, style = STYLE })` |
+| `animation = EVENT, ONOFF, SPEED, SPRINGNAME` | `hl.animation({ leaf = EVENT, enabled = (ONOFF==1), speed = SPEED, spring = SPRINGNAME })` |
 | Event names (`windows`, `border`, `fade`, `workspaces`, ...) | Same names, passed as `leaf = "..."` |
 
 Animation leaf names available in the example config: `global`, `border`, `windows`, `windowsIn`,
@@ -199,6 +215,23 @@ hl.gesture({
 **Translation note:** gestures moved from a single flat options block to discrete gesture
 registrations — you can now define multiple independent gestures (e.g. one for workspace swipe,
 another for a custom action) instead of one fixed `workspace_swipe_*` set of options.
+
+`hl.gesture()` fields (required: `fingers`, `direction`, `action`; the rest optional):
+
+| Field | Type | Meaning |
+|---|---|---|
+| `fingers` | integer | number of fingers (e.g. `3`) |
+| `direction` | string | `"horizontal"`, `"vertical"`, etc. |
+| `action` | string \| function | built-in action name (e.g. `"workspace"`) **or** a Lua callback |
+| `mods` | string | modifier keys required during the gesture |
+| `scale` | number | sensitivity/scale factor |
+| `mode` | string | gesture mode |
+| `zoom_level` | number | for zoom-style gestures |
+| `workspace_name` | string | target workspace for workspace gestures |
+| `disable_inhibit` | boolean | ignore inhibitors |
+
+Because `action` accepts a function, a gesture can now run arbitrary Lua — not possible with the
+old fixed `workspace_swipe_*` options.
 
 ### 2.6 `group`, `misc`, `binds`, `xwayland`, `render`, `cursor`, `debug`, `dwindle`, `master`
 
@@ -313,8 +346,19 @@ hl.bind(mainMod .. " + SHIFT + F", hl.dsp.window.fullscreen({ mode = "maximize" 
 | scroll binds (`mouse_up`/`mouse_down`) | unchanged string token, still passed in the key string: `"SUPER + mouse_down"` |
 | `bindl` (works when locked) | `{ locked = true }` option table, 3rd arg to `hl.bind` |
 | `binde` (repeat while held) | `{ repeating = true }` option |
-| `bindr` (on release) | function-handler form, or check the Binds wiki page for a release-style flag |
+| `bindr` (on release) | `{ release = true }` option |
+| `bindn` (non-consuming) | `{ non_consuming = true }` |
+| `bindt` (transparent) | `{ transparent = true }` |
+| `bindi` (ignore mods) | `{ ignore_mods = true }` |
+| `bindm` (mouse) | `{ mouse = true }` |
+| combined flag letters (`bindel`, `bindle`, ...) | combine keys in the one options table: `{ repeating = true, locked = true }` |
 | keycodes (`code:36`) | same: `hl.bind("SUPER + code:36", ...)` |
+
+The full `hl.bind(keys, dispatcher, opts?)` options table (all boolean unless noted) is:
+`repeating`, `locked`, `release`, `non_consuming`, `transparent`, `ignore_mods`, `mouse`,
+`dont_inhibit`, `long_press`, `submap_universal`, `click`, `drag`, `description`/`desc` (string),
+and `device = { inclusive?, list? }` to scope a bind to specific input devices. `hl.bind()`
+returns a **keybind handle** (see §4.4).
 
 ### 4.2 Loops replace repetitive binds
 
@@ -519,18 +563,44 @@ hl.window_rule({
 
 ## 8. Submaps
 
-There is **no direct `submap` keyword** exposed in the Lua API the same way as before. The
-example config notes that you can still escape a stuck submap with
-`hyprctl dispatch 'hl.dsp.submap("reset")'` — meaning the underlying mechanism persists at the
-dispatcher level even though the authoring pattern is shifting toward Lua functions:
+Submaps **are** exposed in the Lua API, in two complementary ways:
 
-```lua
-hl.bind("SUPER + R", hl.dsp.submap("resize"))
+- **`hl.define_submap(name, reset_or_fn, fn?)`** — declares a submap and the binds that live
+  inside it. You pass the submap name and a function that registers its binds; entering `"reset"`
+  (or an empty submap) returns to the default keymap.
+- **`hl.dsp.submap(name)`** — a dispatcher (bind *into* a submap, or escape a stuck one with
+  `hyprctl dispatch 'hl.dsp.submap("reset")'`).
+- **`hl.get_current_submap()`** — returns the name of the active submap (new; no `.conf` equivalent).
+
+Old:
+```ini
+bind = SUPER, R, submap, resize
+submap = resize
+binde = , right, resizeactive, 10 0
+bind  = , escape, submap, reset
+submap = reset
 ```
 
-For multi-step modal binds, the more idiomatic Lua approach is to manage state directly with a
-closure rather than declaring a named submap block. Check the current **Binds** wiki page, since
-this area is still evolving post-0.55.
+New:
+```lua
+hl.bind("SUPER + R", hl.dsp.submap("resize"))
+
+hl.define_submap("resize", function()
+    hl.bind("right",  hl.dsp.window.resize({ x = 10, y = 0 }), { repeating = true })
+    hl.bind("escape", hl.dsp.submap("reset"))
+end)
+```
+
+| Old | New |
+|---|---|
+| `submap = NAME` … `submap = reset` block | `hl.define_submap("NAME", function() ... end)` |
+| `bind = MODS, KEY, submap, NAME` | `hl.bind("MODS + KEY", hl.dsp.submap("NAME"))` |
+| escape a stuck submap | `hyprctl dispatch 'hl.dsp.submap("reset")'` |
+| *(no old equivalent)* | `hl.get_current_submap()` |
+
+For multi-step modal binds you can alternatively manage state directly with a Lua closure instead
+of a named submap. Exact dispatcher argument shapes are still evolving post-0.55 — cross-check the
+**Binds** wiki page and the shipped `hl.meta.lua` stubs.
 
 ---
 
@@ -604,6 +674,15 @@ hl.permission("/usr/(bin|local/bin)/grim", "screencopy", "allow")
 hl.permission("/usr/(lib|libexec|lib64)/xdg-desktop-portal-hyprland", "screencopy", "allow")
 hl.permission("/usr/(bin|local/bin)/hyprpm", "plugin", "allow")
 ```
+
+`hl.permission(binary, type, mode)` — the three positional args map to the spec fields:
+
+| Position | Field | Example values |
+|---|---|---|
+| 1st | `binary` | a regex matching the executable path, e.g. `"/usr/(bin\|local/bin)/grim"` |
+| 2nd | `type` | the permission category, e.g. `"screencopy"`, `"plugin"`, `"keyboard"` |
+| 3rd | `mode` | `"allow"`, `"deny"`, or `"ask"` |
+
 No old hyprlang equivalent — this system (and `hyprland-guiutils` prompts) is new. Permission
 changes require a Hyprland restart and are not applied on-the-fly, for security reasons.
 
@@ -646,6 +725,13 @@ end)
 Old hyprlang had no scripting/event system at all; this previously required external tools
 (e.g. socket listeners on `hyprctl`).
 
+`hl.on(event, fn)` returns an **event-subscription handle** (so a subscription can be managed
+later). `hl.notification.create({...})` accepts `text` and `timeout` (required) plus optional
+`color`, `icon` (integer id **or** string), and `font_size`; `hl.notification.get()` lists
+active notifications. Event names come from Hyprland's internal event set — verify the exact
+string (e.g. `"hyprland.start"`, `"window.active"`, `"workspace.move_to_monitor"`) against the
+current wiki / `hl.meta.lua` stubs, since the list grows between releases.
+
 ---
 
 ## 15. Reading Config at Runtime (new)
@@ -679,6 +765,10 @@ end, { timeout = 1000, type = "repeat" })
 -- demoTimer:set_enabled(false)
 ```
 
+`hl.timer(callback, { timeout = ms, type = "repeat" | "oneshot" })` — `type` is `"repeat"` for a
+recurring timer or **`"oneshot"`** for a single fire (not `"once"`). Both `timeout` and `type`
+are required.
+
 ---
 
 ## 17. Complete Minimal Example (Lua) — Lua equivalent of the hyprlang minimal example
@@ -696,7 +786,7 @@ hl.monitor({ output = "", mode = "preferred", position = "auto", scale = "auto" 
 ---------------------
 local terminal = "kitty"
 local fileManager = "dolphin"
-local menu = "rofi -show drun"
+local menu = "hyprlauncher"
 local mainMod = "SUPER"
 
 -------------------
@@ -735,10 +825,12 @@ hl.config({
     animations = { enabled = true },
 })
 
-hl.curve("myBezier", { type = "bezier", points = { {0.05, 0.9}, {0.1, 1.05} } })
-hl.animation({ leaf = "windows", enabled = true, speed = 7, bezier = "myBezier" })
-hl.animation({ leaf = "fade", enabled = true, speed = 7, bezier = "default" })
-hl.animation({ leaf = "workspaces", enabled = true, speed = 6, bezier = "default" })
+hl.curve("easeOutQuint", { type = "bezier", points = { {0.23, 1}, {0.32, 1} } })
+hl.curve("easy",         { type = "spring", mass = 1, stiffness = 71.2633, dampening = 15.8273644 })
+hl.animation({ leaf = "windows",    enabled = true, speed = 4.79, spring = "easy" })
+hl.animation({ leaf = "border",     enabled = true, speed = 5.39, bezier = "easeOutQuint" })
+hl.animation({ leaf = "fade",       enabled = true, speed = 3.03, bezier = "default" })
+hl.animation({ leaf = "workspaces", enabled = true, speed = 1.94, bezier = "default", style = "fade" })
 
 ---------------
 ---- INPUT ----
@@ -812,10 +904,13 @@ hl.window_rule({
 
 ## 18. Things With No Old Equivalent (purely new in Lua era)
 
-- `hl.timer(fn, { timeout = ms, type = "repeat"/"once" })` — schedule recurring/one-shot callbacks
+- `hl.timer(fn, { timeout = ms, type = "repeat"/"oneshot" })` — schedule recurring/one-shot callbacks
 - `hl.layout.register(name, {...})` — custom layouts written in Lua
-- `hl.on(event, fn)` — event subscription system
+- `hl.on(event, fn)` — event subscription system (returns a subscription handle)
+- `hl.define_submap(name, reset_or_fn, fn?)` / `hl.get_current_submap()` — script-defined submaps
 - `hl.get_config(path)` — read live config values from within scripts
+- Runtime query API — `hl.get_windows()`, `hl.get_active_window()`, `hl.get_monitors()`,
+  `hl.get_workspaces()`, `hl.get_cursor_pos()`, etc. (see §20)
 - `hl.permission(path, perm, allow/deny)` and `ecosystem.enforce_permissions` — app permission prompts
 - Bind/rule **handles** (`local b = hl.bind(...)`) with `:set_enabled(bool)` for runtime toggling
 - `hl.gesture({...})` as a registrable, repeatable construct instead of fixed `workspace_swipe_*` options
@@ -838,3 +933,47 @@ hl.window_rule({
 - Where this doc says "verify exact key" it means the wiki text didn't give the literal Lua
   field name with full confidence — search `wiki.hypr.land` directly for that specific page
   rather than guessing from the old `.conf` name.
+
+---
+
+## 20. Runtime Query API (new — no old equivalent)
+
+The Lua era exposes a full set of read-only getters for inspecting live compositor state from
+within scripts/binds. Old hyprlang had none of this — the closest was shelling out to
+`hyprctl clients -j` / `hyprctl monitors -j` and parsing JSON. These return live objects (with
+`:` methods), not just plain tables.
+
+```lua
+local w  = hl.get_active_window()          -- HL.Window | nil
+local ws = hl.get_active_workspace()       -- HL.Workspace | nil
+local m  = hl.get_active_monitor()         -- HL.Monitor | nil
+
+-- filtered / bulk queries
+local windows = hl.get_windows({ ... })    -- HL.Window[]  (optional filter table)
+local layers  = hl.get_layers({ ... })     -- HL.LayerSurface[]
+```
+
+| Function | Returns |
+|---|---|
+| `hl.get_windows(filters?)` | `HL.Window[]` |
+| `hl.get_window(selector)` | `HL.Window \| nil` |
+| `hl.get_active_window()` | `HL.Window \| nil` |
+| `hl.get_urgent_window()` | `HL.Window \| nil` |
+| `hl.get_last_window()` | `HL.Window \| nil` |
+| `hl.get_workspaces()` | `HL.Workspace[]` |
+| `hl.get_workspace(selector)` | `HL.Workspace \| nil` |
+| `hl.get_active_workspace(monitor?)` | `HL.Workspace \| nil` |
+| `hl.get_active_special_workspace(monitor?)` | `HL.Workspace \| nil` |
+| `hl.get_workspace_windows(workspace)` | `HL.Window[]` |
+| `hl.get_monitors()` | `HL.Monitor[]` |
+| `hl.get_monitor(selector)` | `HL.Monitor \| nil` |
+| `hl.get_active_monitor()` | `HL.Monitor \| nil` |
+| `hl.get_monitor_at(x, y?)` / `hl.get_monitor_at_cursor()` | `HL.Monitor \| nil` |
+| `hl.get_layers(filters?)` | `HL.LayerSurface[]` |
+| `hl.get_cursor_pos()` | `HL.Vec2 \| nil` |
+| `hl.get_config(key)` | current value of a config option (§15) |
+| `hl.get_current_submap()` | `string` (active submap name) |
+
+Selectors (`WindowSelector`, `WorkspaceSelector`, `MonitorSelector`) accept a string identifier,
+an integer id, or an already-fetched object of the matching type. `hl.dispatch(dispatcher)` runs
+a `hl.dsp.*` dispatcher imperatively (e.g. inside a multi-action bind function — see §4.3).

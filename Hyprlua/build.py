@@ -39,6 +39,47 @@ class Builder:
                 new_lines.append(line)
         return new_lines, multilines
 
+    def collect_animations(self, multilines):
+        # The `animations {}` block is special: `enabled`/etc. are hl.config options,
+        # but `bezier`/`animation` lines translate to top-level hl.curve()/hl.animation()
+        # statements that must NOT live inside the hl.config({ animations = {} }) table.
+        new_multilines = []
+        animations = None
+        for line in multilines:
+            if line.category_obj is not None and line.category_obj.category_name == 'animations':
+                animations = line
+            else:
+                new_multilines.append(line)
+        return new_multilines, animations
+
+    def build_animations(self, animations):
+        inner = animations.category_obj.lines[1:-1]
+        statement_lines = []  # hl.curve()/hl.animation() + surrounding comments -> top level
+        config_lines = []     # plain options (enabled, ...) -> hl.config({ animations = {} })
+        for line in inner:
+            is_curve = isinstance(line, Line) and isinstance(
+                line.pars_obj, (inline_module.Animation, inline_module.Bezier))
+            if is_curve:
+                statement_lines.append(line.reset_indent())
+            elif isinstance(line, Line) and line.pars_obj is not None and not line.is_comment:
+                config_lines.append(line.reset_indent().add_indent().add_indent())
+            else:
+                # comments / blank lines stay with the top-level curve section
+                if isinstance(line, Line):
+                    line.reset_indent()
+                statement_lines.append(line)
+
+        result = []
+        if config_lines:
+            result.append('hl.config({')
+            result.append('    animations = {')
+            result.extend(l.build() for l in config_lines)
+            result.append('    },')
+            result.append('})')
+            result.append('')
+        result.extend(l.build() for l in statement_lines)
+        return '\n'.join(result)
+
     def collect_exec(self, lines):
         new_lines = []
         exec_lines = []
@@ -61,6 +102,7 @@ class Builder:
         logger.debug(f'Building {file.name}')
         output_path = self.resolve_path(file)
         lines, multilines = self.collect_multilines(file.lines)
+        multilines, animations = self.collect_animations(multilines)
 
         return_lines = list()
         return_lines.append('-- This Hyprland lua config is auto translated from the old Hyprlang')
@@ -76,6 +118,14 @@ class Builder:
             return_lines.append('hl.config({')
             return_lines.append('\n'.join([l.build() for l in multilines]))
             return_lines.append('}, true)')
+            return_lines.append('')
+
+        # Animations translate to top-level hl.curve()/hl.animation() statements,
+        # with any plain options kept in their own hl.config({ animations = {} }) call.
+        if animations is not None:
+            return_lines.append('-- Hyprland animations')
+            return_lines.append('')
+            return_lines.append(self.build_animations(animations))
             return_lines.append('')
 
         # Build all execs

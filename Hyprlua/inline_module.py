@@ -157,11 +157,12 @@ class Animation(Base):
     def parse(self, line:str):
         self.animation_rule = line
         parts = [x.strip() for x in line.split('=', 1)[1].split(',')]
+        # A disabled animation may be given as just "NAME, 0" (no speed/curve).
         self.leaf = parts[0]
-        self.enabled = parts[1].strip() == '1'
-        self.speed = parts[2].strip()
-        self.bezier_name = parts[3].strip()
-        self.style = parts[4].strip() if len(parts) > 4 else ''
+        self.enabled = len(parts) > 1 and parts[1] == '1'
+        self.speed = parts[2] if len(parts) > 2 else ''
+        self.bezier_name = parts[3] if len(parts) > 3 else ''
+        self.style = parts[4] if len(parts) > 4 else ''
         return self
 
     def __str__(self):
@@ -169,7 +170,11 @@ class Animation(Base):
 
     def build(self):
         enabled_str = 'true' if self.enabled else 'false'
-        result = f'hl.animation({{ leaf = "{self.leaf}", enabled = {enabled_str}, speed = {self.speed}, bezier = "{self.bezier_name}"'
+        result = f'hl.animation({{ leaf = "{self.leaf}", enabled = {enabled_str}'
+        if self.speed:
+            result += f', speed = {self.speed}'
+        if self.bezier_name:
+            result += f', bezier = "{self.bezier_name}"'
         if self.style:
             result += f', style = "{self.style}"'
         result += ' })'

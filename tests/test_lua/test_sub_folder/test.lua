@@ -3,7 +3,7 @@
 hl.window_rule({ name = "windowrule24", match = { class = "border_size 10" }, match:class my-window })
 
 -- # See https://wiki.hypr.land/Configuring/Monitors/
-hl.monitor({ output = "", mode = "preferred", position = "auto", scale = "auto", }))
+hl.monitor({ output = "", mode = "preferred", position = "auto", scale = "auto", })
 
 
 -- ###################

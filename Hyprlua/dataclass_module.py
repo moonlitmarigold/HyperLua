@@ -75,7 +75,7 @@ class Monitor(Base):
             f'position = {self.return_var_value(self.position)}',
             f'scale = {self.return_var_value(self.scale)}',
         )
-        return f'hl.monitor({{ {', '.join(_list) }, }}))'
+        return f'hl.monitor({{ {', '.join(_list) }, }})'
 
 @register
 @dataclasses.dataclass

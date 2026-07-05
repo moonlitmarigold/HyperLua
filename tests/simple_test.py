@@ -17,7 +17,7 @@ def test_parser():
 def test_builder():
     config_path = Path(__file__).parent
     print(config_path)
-    output_path = Path(__file__).parent / "test_lua" / "test.lua"
+    output_path = Path(__file__).parent / "test_lua"
     print(output_path)
 
     _parser = parser.Parser(config_file.Conf(config_path))

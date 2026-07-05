@@ -222,3 +222,4 @@ __marimo__/
 .streamlit/secrets.toml
 .webui_secret_key
 CLAUDE.md
+test_dotfiles/

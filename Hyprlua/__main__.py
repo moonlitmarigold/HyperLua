@@ -1,6 +1,7 @@
 from . import config_file
 from . import parser, build
 import argparse
+from pathlib import Path
 
 
 def show_help():
@@ -36,6 +37,16 @@ def main():
     if args.help:
         show_help()
         return
+    conf = config_file.Conf(args.config_path)
+
+    if args.output_path is None:
+        output = conf
+    else:
+        output = config_file.ConfExtraFile(Path(args.output_path).expanduser())
+
+    print('Using {} as Hyprland config directory, and {} as the config file'.format(conf.conf_dir, conf.conf_file))
+    print('Using {} as output directory'.format(output.conf_dir))
+    print('')
 
     # Inform User before starting the script
     print('This script will update part of your Hyprland config files to the new Lua format. Since not everything is supported (especially binds) or the potential of wrong translations, it is highly discouraged use the automatically translated config files directly, AS IT MAY BREAK YOUR SYSTEM.')
@@ -44,13 +55,8 @@ def main():
     if response.lower() != 'y':
         return
     # Get config directory from CLI argument or auto-detect
-    conf = config_file.Conf(args.config_path)
-    print('Using {} as Hyprland config directory'.format(conf.conf_dir))
     File = parser.Parser(conf).start_parser()
-    if args.output_path is None:
-        output = conf
-    else:
-        output = config_file.ConfExtraFile(args.output_path)
+
     build.Builder(conf, output).build(File)
     return
 

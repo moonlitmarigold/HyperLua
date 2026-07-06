@@ -231,6 +231,8 @@ class Var(Base):
         self.var_name, self.var_value = [x.strip() for x in line.split('=')]
         if self.var_value.__contains__('yes'):
             self.var_value = 'true'
+        if self.var_value.__contains__('no'):
+            self.var_value = 'false'
         return self
 
     def __str__(self):
@@ -266,7 +268,7 @@ class Opacity(Base):
         return f'{self.keyword} = {{ {self.active.build()} {self.inactive.build()} }},'
 
 @dataclasses.dataclass
-class BorderColor(Opacity):
+class BorderColor(Base):
 
     active:SingleColor = None
     inactive:SingleColor = None
@@ -278,6 +280,11 @@ class BorderColor(Opacity):
             self.active = SingleColor().set("active", parts[0])
             self.inactive = SingleColor().set("inactive", parts[1])
         return self
+
+    def build(self):
+        if not self.inactive:
+            return f'{self.keyword} = {{ {self.active.build()} }},'
+        return f'{self.keyword} = {{ {self.active.build()} {self.inactive.build()} }},'
 
 class Size(Base):
 

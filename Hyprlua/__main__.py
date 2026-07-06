@@ -2,6 +2,7 @@ from . import config_file
 from . import parser, build
 import argparse
 from pathlib import Path
+import logging
 
 
 def show_help():
@@ -18,6 +19,7 @@ def show_help():
       --version, -v  Show version information
       --config, -c   Path to Hyprland config directory (uses standard ~/.config/hypr if omitted)
       --output, -o   Custom output file (defaults to placing files in the same directory as the original config)
+      --debug, -d    Show debug information
     ''')
 
 
@@ -29,6 +31,7 @@ def parse_arguments():
                         help='Path to Hyprland config directory (uses standard ~/.config/hypr if omitted)')
     parser.add_argument('--output', '-o',  dest='output_path', nargs='?', default=None,
                         help='Custom output file (defaults to placing files in the same directory as the original config)')
+    parser.add_argument('--debug', '-d', action='store_true', help='Show debug information')
     return parser.parse_args()
 
 def main():
@@ -37,6 +40,10 @@ def main():
     if args.help:
         show_help()
         return
+    
+    if args.debug:
+        logging.basicConfig(level=logging.DEBUG)
+
     conf = config_file.Conf(args.config_path)
 
     if args.output_path is None:
@@ -51,6 +58,7 @@ def main():
     # Inform User before starting the script
     print('This script will update part of your Hyprland config files to the new Lua format. Since not everything is supported (especially binds) or the potential of wrong translations, it is highly discouraged use the automatically translated config files directly, AS IT MAY BREAK YOUR SYSTEM.')
     print('Please try to use another config path outside your current hyprland file and correct any wrong or unsupported syntax before using the translated files. Any unsupported syntax will be commented.')
+    print('Currently layerrules, gestures and binds are not fully supported.')
     response = input('Do you want to continue? (y/n): ')
     if response.lower() != 'y':
         return

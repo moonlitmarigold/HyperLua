@@ -362,17 +362,17 @@ windowrule = {
     float = true,
 },
 
-hl.window_rule({ name = "windowrule1", match = { class = "^(pavucontrol)$" }, float = true, })
-hl.window_rule({ name = "windowrule2", match = { class = "^(blueman-manager)$" }, float = true, })
-hl.window_rule({ name = "windowrule3", match = { class = "^(pavucontrol)$" }, size = "800 600", })
-hl.window_rule({ name = "windowrule4", match = { class = "^(myapp)$" }, move = "100 100", })
-hl.window_rule({ name = "windowrule5", match = { class = "^(firefox)$" }, workspace = 2, })
-hl.window_rule({ name = "windowrule6", match = { class = "^(kitty)$" }, opacity = { active = 0.9, }, })
-hl.window_rule({ name = "windowrule7", match = { class = "^(firefox)$" }, no_blur = true, })
-hl.window_rule({ name = "windowrule8", match = { class = "^(gamescope)$" }, fullscreen = true, })
-hl.window_rule({ name = "windowrule9", match = { class = "^(Spotify)$" }, float = true, })
-hl.window_rule({ name = "windowrule10", match = { class = "^(stickynotes)$" }, pin = true, })
-hl.window_rule({ name = "windowrule11", match = { class = "^()$" }, no_focus = true, }) -- empty class — unmanaged xwayland
+hl.window_rule({ name = "windowrule1", match = { class = "^(pavucontrol)$", }, float = true, })
+hl.window_rule({ name = "windowrule2", match = { class = "^(blueman-manager)$", }, float = true, })
+hl.window_rule({ name = "windowrule3", match = { class = "^(pavucontrol)$", }, size = "800 600", })
+hl.window_rule({ name = "windowrule4", match = { class = "^(myapp)$", }, move = "100 100", })
+hl.window_rule({ name = "windowrule5", match = { class = "^(firefox)$", }, workspace = 2, })
+hl.window_rule({ name = "windowrule6", match = { class = "^(kitty)$", }, opacity = { active = 0.9, }, })
+hl.window_rule({ name = "windowrule7", match = { class = "^(firefox)$", }, no_blur = true, })
+hl.window_rule({ name = "windowrule8", match = { class = "^(gamescope)$", }, fullscreen = true, })
+hl.window_rule({ name = "windowrule9", match = { class = "^(Spotify)$", }, float = true, })
+hl.window_rule({ name = "windowrule10", match = { class = "^(stickynotes)$", }, pin = true, })
+hl.window_rule({ name = "windowrule11", match = { class = "^()$", }, no_focus = true, }) -- empty class — unmanaged xwayland
 
 hl.window_rule({ name = "windowrule12", match = { class = "^(xdg-desktop-portal-gtk)$", }, float = true, })
 hl.window_rule({ name = "windowrule13", match = { class = "^(.*)", title = "^(Picture in picture)$", }, float = true, })
@@ -384,9 +384,9 @@ hl.window_rule({ name = "windowrule18", match = { class = "^(.*)$", }, suppress_
 hl.window_rule({ name = "windowrule19", match = { class = "^(.*)$", }, no_max_size = true, })
 hl.window_rule({ name = "windowrule20", match = { class = "^(myapp)$", }, move = "100 100", })
 hl.window_rule({ name = "windowrule21", match = { class = "^(pavucontrol)$", }, size = "800 600", })
-hl.window_rule({ name = "windowrule22", match = { class = "^(important)$", }, border_color = { active = "rgb(ff0000)", inactive = "rgb(00ff00)", }, })
+hl.window_rule({ name = "windowrule22", match = { class = "^(important)$", }, bordercolor rgb(ff0000) rgb(00ff00) })
 hl.window_rule({ name = "windowrule23", match = { class = "^(dialog)$", }, center = true, })
 
-require("test_sub_folder/test.conf")
+require("test_sub_folder/test")
 
 hl.exec_cmd("~/.config/hypr/reload_script.sh")

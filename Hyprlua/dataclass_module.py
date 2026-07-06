@@ -1,5 +1,8 @@
 import dataclasses
 from pathlib import Path
+
+from iniconfig import _parse
+
 from .base_module import *
 from . import inline_module
 from . import config_file
@@ -48,7 +51,7 @@ class File(Base):
 
     def build(self, builder_obj):
         builder_obj.build(self)
-        return f'require("{self.rel_location}")'
+        return f'require("{self.rel_location.split('.')[0]}")'
 
 @register
 @dataclasses.dataclass
@@ -205,7 +208,7 @@ class Workspace(Base):
 class Windowrule(Base):
     keyword: ClassVar[str] = 'windowrule '
     action = ''
-    match:inline_module.Match = None
+    multi_match:list = dataclasses.field(default_factory=lambda: [])
     bool_rules = {
         "float": "float",
         "fakefullscreen": "fake_fullscreen",
@@ -222,6 +225,21 @@ class Windowrule(Base):
         "decorate": "decorate",
         "renderunfocused": "render_unfocused",
         "center": "center",
+        "no_initial_focus": "no_initial_focus",
+        # New-style (post-v0.55) rule names are already snake_case, so they map
+        # onto themselves. Configs written in the new syntax use these directly.
+        "immediate": "immediate",
+        "no_blur": "no_blur",
+        "no_anim": "no_anim",
+        "no_border": "no_border",
+        "no_shadow": "no_shadow",
+        "no_focus": "no_focus",
+        "no_max_size": "no_max_size",
+        "stay_focused": "stay_focused",
+        "dim_around": "dim_around",
+        "keep_aspect_ratio": "keep_aspect_ratio",
+        "render_unfocused": "render_unfocused",
+        "fake_fullscreen": "fake_fullscreen",
     }
 
     rule_number = 0
@@ -239,38 +257,60 @@ class Windowrule(Base):
         "bordersize": inline_module.bordersize,
         "rounding": inline_module.rounding,
         "suppressevent": inline_module.suppressevent,
-        "bordercolor": inline_module.BorderColor().parse,
+        "border_color": inline_module.BorderColor().parse,
     })
 
     def parse(self, line: str):
         keyword, value = [x.strip() for x in line.split("=", 1)]
-        action, regex = [x.strip() for x in value.split(",", 1)]
-        self.action = action
-        _match = inline_module.Match()
-        _match.match_type = 'class'
-        _match.match_value = regex
-        self.match = _match
+        parts = [x.strip() for x in value.split(",")]
+
+        _match_list = list()
+        for part in parts:
+            if part.__contains__('match'):
+                _match_list.append(part)
+            else:
+                self.action = part
+        if not _match_list:
+            action, regex = parts
+            self.action = action
+            self.multi_match.append(inline_module.Var().set('class', regex))
+            return self
+
+        for _match in _match_list:
+            match, name = [x.strip() for x in _match.split(" ", 1)]
+            match_type = [x.strip() for x in match.split(":", 1)][1]
+            self.multi_match.append(inline_module.Var().set(match_type, name))
         return self
 
     def __str__(self):
-        return f'windowrule = {self.action}, {str(self.match)}'
+        return f'windowrule = {self.action}, ' + ', '.join([str(x) for x in self.multi_match])
+
+    def _match(self):
+        for var in self.multi_match:
+            if var.var_value == '1':
+                var.var_value = 'true'
+            if var.var_value == '0':
+                var.var_value = 'false'
+        return 'match = { ' + ' '.join([x.build() for x in self.multi_match]) + ' },'
 
     def build(self):
         options = list()
         options.append(f'name = "windowrule{self.rule_number}",')
-        options.append(self.match.build())
+        options.append(self._match())
         options.append(self._action())
         return 'hl.window_rule({ ' + ' '.join(options) + ' })'
 
     def _action(self):
         _action = self.action.strip().split(' ')[0].strip()
-        logger.debug(f'action = {self.action}')
+        logger.debug(f'action = {_action}')
+        logger.debug(self.action)
         if _action in self.bool_rules:
             return f'{self.bool_rules[_action]} = true,'
         if _action == 'title':
             return 'float = true,'
         if _action in self.translation.keys():
             return self.translation[_action](self.action).build()
+
         return self.action
 
 # windowrulev2
@@ -286,8 +326,15 @@ class Windowrulev2(Windowrule):
         #"windowrulev2 = noblur, class:^(firefox)$,title:^(.*YouTube.*)$"
         keyword, value = [x.strip() for x in line.split("=", 1)]
         parts = [x.strip() for x in value.split(",")]
-        self.action = parts[0]
-        for _match in parts[1:]:
+
+        _match_list = list()
+        for part in parts:
+            if part.__contains__(':'):
+                _match_list.append(part)
+            else:
+                self.action = part
+
+        for _match in _match_list:
             type_match, regex = [x.strip() for x in _match.split(":", 1)]
             self.multi_match.append(inline_module.Var().set(type_match, regex))
         return self
@@ -304,9 +351,6 @@ class Windowrulev2(Windowrule):
         options.append(self._match())
         options.append(self._action())
         return 'hl.window_rule({ ' + ' '.join(options) + ' })'
-
-    def _match(self):
-        return 'match = { ' + ' '.join([x.build() for x in self.multi_match]) + ' },'
 
 CATEGORIES = (
     'windowrule', 'animations', 'general', 'decoration', 'input', 'gestures',

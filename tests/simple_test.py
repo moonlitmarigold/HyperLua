@@ -58,52 +58,41 @@ def test_workspace_build_persistent():
 
 # --- Windowrule (old single-line style) ---
 
-def test_windowrule_parse_bool_action():
-    wr = Windowrule().parse("windowrule = float, ^(pavucontrol)$")
-    assert wr.action == "float"
-    assert wr.match.match_type == "class"
-    assert wr.match.match_value == "^(pavucontrol)$"
-
-def test_windowrule_parse_value_action():
-    wr = Windowrule().parse("windowrule = size 800 600, ^(pavucontrol)$")
-    assert wr.action == "size 800 600"
-    assert wr.match.match_value == "^(pavucontrol)$"
-
 def test_windowrule_build_float():
     wr = Windowrule().parse("windowrule = float, ^(pavucontrol)$")
-    assert wr.build() == 'hl.window_rule({ name = "windowrule0", match = { class = "^(pavucontrol)$" }, float = true, })'
+    assert wr.build() == 'hl.window_rule({ name = "windowrule0", match = { class = "^(pavucontrol)$", }, float = true, })'
 
 def test_windowrule_build_noblur():
     wr = Windowrule().parse("windowrule = noblur, ^(firefox)$")
-    assert wr.build() == 'hl.window_rule({ name = "windowrule0", match = { class = "^(firefox)$" }, no_blur = true, })'
+    assert wr.build() == 'hl.window_rule({ name = "windowrule0", match = { class = "^(firefox)$", }, no_blur = true, })'
 
 def test_windowrule_build_nofocus():
     wr = Windowrule().parse("windowrule = nofocus, ^()$")
-    assert wr.build() == 'hl.window_rule({ name = "windowrule0", match = { class = "^()$" }, no_focus = true, })'
+    assert wr.build() == 'hl.window_rule({ name = "windowrule0", match = { class = "^()$", }, no_focus = true, })'
 
 def test_windowrule_build_pin():
     wr = Windowrule().parse("windowrule = pin, ^(stickynotes)$")
-    assert wr.build() == 'hl.window_rule({ name = "windowrule0", match = { class = "^(stickynotes)$" }, pin = true, })'
+    assert wr.build() == 'hl.window_rule({ name = "windowrule0", match = { class = "^(stickynotes)$", }, pin = true, })'
 
 def test_windowrule_build_size():
     wr = Windowrule().parse("windowrule = size 800 600, ^(pavucontrol)$")
-    assert wr.build() == 'hl.window_rule({ name = "windowrule0", match = { class = "^(pavucontrol)$" }, size = "800 600", })'
+    assert wr.build() == 'hl.window_rule({ name = "windowrule0", match = { class = "^(pavucontrol)$", }, size = "800 600", })'
 
 def test_windowrule_build_move():
     wr = Windowrule().parse("windowrule = move 100 100, ^(myapp)$")
-    assert wr.build() == 'hl.window_rule({ name = "windowrule0", match = { class = "^(myapp)$" }, move = "100 100", })'
+    assert wr.build() == 'hl.window_rule({ name = "windowrule0", match = { class = "^(myapp)$", }, move = "100 100", })'
 
 def test_windowrule_build_workspace():
     wr = Windowrule().parse("windowrule = workspace 2, ^(firefox)$")
-    assert wr.build() == 'hl.window_rule({ name = "windowrule0", match = { class = "^(firefox)$" }, workspace = 2, })'
+    assert wr.build() == 'hl.window_rule({ name = "windowrule0", match = { class = "^(firefox)$", }, workspace = 2, })'
 
 def test_windowrule_build_opacity():
     wr = Windowrule().parse("windowrule = opacity 0.9, ^(kitty)$")
-    assert wr.build() == 'hl.window_rule({ name = "windowrule0", match = { class = "^(kitty)$" }, opacity = { active = 0.9, }, })'
+    assert wr.build() == 'hl.window_rule({ name = "windowrule0", match = { class = "^(kitty)$", }, opacity = { active = 0.9, }, })'
 
 def test_windowrule_build_fullscreen():
     wr = Windowrule().parse("windowrule = fullscreen, ^(gamescope)$")
-    assert wr.build() == 'hl.window_rule({ name = "windowrule0", match = { class = "^(gamescope)$" }, fullscreen = true, })'
+    assert wr.build() == 'hl.window_rule({ name = "windowrule0", match = { class = "^(gamescope)$", }, fullscreen = true, })'
 
 
 # --- Windowrulev2 ---
@@ -126,7 +115,7 @@ def test_windowrulev2_build_suppress_event():
 
 def test_windowrule_build_tile():
     wr = Windowrule().parse("windowrule = tile, ^(Spotify)$")
-    assert wr.build() == 'hl.window_rule({ name = "windowrule0", match = { class = "^(Spotify)$" }, float = false, })'
+    assert wr.build() == 'hl.window_rule({ name = "windowrule0", match = { class = "^(Spotify)$", }, float = false, })'
 
 def test_windowrulev2_build_monitor():
     wr = Windowrulev2().parse("windowrulev2 = monitor DP-2, class:^(discord)$")
@@ -152,6 +141,13 @@ def test_windowrulev2_build_fullscreen_maximize():
     wr = Windowrulev2().parse("windowrulev2 = fullscreen 1, class:^(gamescope)$")
     assert wr.build() == 'hl.window_rule({ name = "windowrule0", match = { class = "^(gamescope)$", }, fullscreen_mode = "maximize", })'
 
+def test_custom_windowrule():
+    wr = Windowrule().parse('windowrule = match:class ^jetbrains-.*$, match:float 1, match:title ^$|^\s$|^win\d+$, no_initial_focus on')
+    assert wr.build() == 'hl.window_rule({ name = "windowrule0", match = { class = "^jetbrains-.*$", float = true, title = "^$|^\\\\s$|^win\\\\d+$", }, no_initial_focus = true, })'
+
+def test_bordercolor():
+    wr = Windowrule().parse('windowrule = border_color rgba(FFB2BCAA) rgba(FFB2BC77), match:pin 1')
+    assert wr.build() == 'hl.window_rule({ name = "windowrule0", match = { pin = true, }, border_color = { active = "rgba(FFB2BCAA)", inactive = "rgba(FFB2BC77)", }, })'
 
 # --- Animation ---
 

@@ -255,7 +255,12 @@ class Base:
             return var_value
         if var_value == 'true' or  var_value == 'false':
             return var_value
-        return f'"{var_value}"'
+        # Escape backslashes and double quotes so values containing them stay
+        # valid Lua strings — e.g. match regexes (`^dev\.warp\.Warp$`) or app
+        # launcher commands (`... "kitty -1" "foot"`). Backslash must be escaped
+        # first, otherwise the backslash added for `\"` would be doubled.
+        escaped = var_value.replace('\\', '\\\\').replace('"', '\\"')
+        return f'"{escaped}"'
 
 @dataclasses.dataclass
 class MultiLineBase:

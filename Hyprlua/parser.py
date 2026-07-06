@@ -49,6 +49,8 @@ class Parser:
         def _multiline(_line:str, _generator):
             if not _line.__contains__('{'):
                 return Line(_line)
+            if _line.__contains__('}'):
+                return Line(_line)
             line_list = [Line(_line)]
 
             _line = next(generator)

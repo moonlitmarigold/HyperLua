@@ -22,8 +22,6 @@ class Builder:
         new_path =  self.output_conf.conf_dir / diff
         new_path.parent.mkdir(parents=True, exist_ok=True)
 
-        if new_path.name == 'hyprland.conf':
-            new_path = new_path.with_name('hypr')
         new_path = new_path.with_suffix('.lua')
         new_path.touch(exist_ok=True)
         logger.debug(f'Resolving {file.location} to {new_path}')

@@ -16,7 +16,6 @@ def show_help():
     
     Options:
       --help, -h     Show this help message
-      --version, -v  Show version information
       --config, -c   Path to Hyprland config directory (uses standard ~/.config/hypr if omitted)
       --output, -o   Custom output file (defaults to placing files in the same directory as the original config)
       --debug, -d    Show debug information
@@ -26,7 +25,6 @@ def show_help():
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Simple tool to update old Hyprland configs to the new Lua format.\nUpdated configs will be placed in the same directory as the original config by default, but you can specify a custom output file with the --output option.', add_help=False)
     parser.add_argument('-h', '--help', action='store_true', help='Show this help message and exit')
-    parser.add_argument('--version', '-v', action='version', version='HyprLua 0.1')
     parser.add_argument('--config', '-c', dest='config_path', nargs='?',  default=None,
                         help='Path to Hyprland config directory (uses standard ~/.config/hypr if omitted)')
     parser.add_argument('--output', '-o',  dest='output_path', nargs='?', default=None,

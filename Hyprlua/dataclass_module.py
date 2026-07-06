@@ -359,6 +359,6 @@ CATEGORIES = (
 )
 
 HL_CONFIG_EXPECTIONS = (
-    'gestures', 'windowrule',
+    'gestures', 'windowrule', 'layerrule'
 )
 
